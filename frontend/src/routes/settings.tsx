@@ -113,8 +113,8 @@ const PROVIDERS: Provider[] = [
     label: "Agnes AI",
     apiKeyField: "agnes_api_key",
     apiKeyPlaceholder: "Agnes API Key",
-    defaultModels: ["openai/agnes-2.5-flash", "openai/agnes-2.5-pro", "openai/agnes-3.0-flash"],
-    reasoningModels: ["openai/agnes-2.5-pro", "openai/agnes-3.0-flash"],
+    defaultModels: ["openai/agnes-2.5-flash"],
+    reasoningModels: ["openai/agnes-2.5-flash"],
   },
   {
     id: "minimax",
