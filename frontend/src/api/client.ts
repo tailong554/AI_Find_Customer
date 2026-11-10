@@ -18,6 +18,10 @@ export interface NameIntentLead {
   source_domain: string; search_query: string; intent_type: string; intent_score: number;
   purchase_signal: string; reason: string; evidence_quote: string; reply_draft: string;
   status: string; created_at: string; updated_at: string;
+  need_summary?: string; buying_signal_summary?: string;
+  need_clarity_score?: number; purchase_stage_score?: number; urgency_score?: number;
+  service_fit_score?: number; contactability_score?: number; score_explanation?: string;
+  first_seen_at?: string; last_seen_at?: string; search_count?: number;
 }
 
 export interface HuntRequest {
