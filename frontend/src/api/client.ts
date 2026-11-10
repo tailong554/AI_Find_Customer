@@ -13,6 +13,13 @@ function withApiAuth(headers?: HeadersInit): HeadersInit {
 }
 const SETTINGS_API_BASE = "/api/settings";
 
+export interface NameIntentLead {
+  id: string; title: string; url: string; snippet: string; source_platform: string;
+  source_domain: string; search_query: string; intent_type: string; intent_score: number;
+  purchase_signal: string; reason: string; evidence_quote: string; reply_draft: string;
+  status: string; created_at: string; updated_at: string;
+}
+
 export interface HuntRequest {
   website_url: string;
   description: string;
@@ -558,6 +565,21 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  searchNameLeads: (data: { country_code: string; max_results_per_query: number; max_candidates: number; include_reddit: boolean; include_other_forums: boolean }) =>
+    request<{ provider: string; candidate_count: number; direct_requests: number; high_intent_count: number; leads: NameIntentLead[]; notice: string }>("/name-leads/search", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  listNameLeads: (status = "", minScore = 0) =>
+    request<{ leads: NameIntentLead[]; count: number }>(`/name-leads?min_score=${minScore}${status ? `&status=${encodeURIComponent(status)}` : ""}`),
+
+  updateNameLeadStatus: (leadId: string, status: string) =>
+    request<{ lead: NameIntentLead }>(`/name-leads/${leadId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }),
+
   createHunt: (data: HuntRequest) =>
     request<HuntResponse>("/hunts", {
       method: "POST",
