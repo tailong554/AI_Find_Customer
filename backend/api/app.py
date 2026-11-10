@@ -18,6 +18,7 @@ from api.automation_routes import router as automation_router
 from api.name_lead_routes import router as name_lead_router
 from api.name_lead_scheduler import name_lead_scheduler_loop
 from api.name_lead_email_routes import router as name_lead_email_router, name_lead_email_scheduler_loop
+from api.public_name_funnel_routes import router as public_name_funnel_router
 from api.hunt_store import load_all_hunts
 from api.email_routes import (
     CreateCampaignRequest,
@@ -759,6 +760,7 @@ def create_app() -> FastAPI:
     app.include_router(router, prefix="/api/v1")
     app.include_router(name_lead_router, prefix="/api/v1")
     app.include_router(name_lead_email_router, prefix="/api/v1")
+    app.include_router(public_name_funnel_router, prefix="/api/v1")
     app.include_router(automation_router)
     app.include_router(email_router)
     app.include_router(sse_router, prefix="/api/v1")
