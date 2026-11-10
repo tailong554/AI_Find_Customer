@@ -81,7 +81,7 @@ class NameLeadSearchRequest(BaseModel):
 
 
 class NameLeadStatusRequest(BaseModel):
-    status: Literal["new", "reviewed", "replied", "converted", "dismissed"]
+    status: Literal["new", "reviewed", "ready_to_contact", "contacted", "email_consented", "email_sent", "replied", "converted", "dismissed"]
 
 
 class NameLead(BaseModel):
