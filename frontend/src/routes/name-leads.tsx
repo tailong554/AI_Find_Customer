@@ -8,9 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Search, ExternalLink, Copy, Loader2, UserRoundSearch } from "lucide-react";
 
 const statusLabels: Record<string, string> = {
-  new: "新线索", reviewed: "已审核", replied: "已回复", converted: "已成交", dismissed: "已忽略",
+  new: "新线索", reviewed: "已审核", ready_to_contact: "待联系", contacted: "已联系", email_consented: "已授权邮箱", email_sent: "已发邮件", replied: "已回复", converted: "已成交", dismissed: "已忽略",
 };
-const statusOptions = ["new", "reviewed", "replied", "converted", "dismissed"];
+const statusOptions = ["new", "reviewed", "ready_to_contact", "contacted", "email_consented", "email_sent", "replied", "converted", "dismissed"];
 
 function LeadCard({ lead, onStatus }: { lead: NameIntentLead; onStatus: (id: string, status: string) => void }) {
   const [email, setEmail] = useState("");
@@ -158,6 +158,7 @@ export function NameLeadsPage() {
               {search.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
               {search.isPending ? "正在搜索..." : "开始搜索潜客"}
             </Button>
+          </div>
           </div>
         </CardContent>
       </Card>
