@@ -108,6 +108,13 @@ class SettingsPayload(BaseModel):
     name_lead_email_reply_check_interval_minutes: str = ""
     name_lead_email_first_followup_days: str = ""
     name_lead_email_second_followup_days: str = ""
+    public_app_base_url: str = ""
+    name_lead_order_webhook_secret: str = ""
+    meta_graph_api_version: str = ""
+    meta_access_token: str = ""
+    meta_page_public_content_access_approved: str = ""
+    instagram_access_token: str = ""
+    instagram_business_account_id: str = ""
 
 
 class SettingsResponse(BaseModel):
@@ -270,6 +277,13 @@ async def save_settings(payload: SettingsPayload):
         "name_lead_email_reply_check_interval_minutes": "NAME_LEAD_EMAIL_REPLY_CHECK_INTERVAL_MINUTES",
         "name_lead_email_first_followup_days": "NAME_LEAD_EMAIL_FIRST_FOLLOWUP_DAYS",
         "name_lead_email_second_followup_days": "NAME_LEAD_EMAIL_SECOND_FOLLOWUP_DAYS",
+        "public_app_base_url": "PUBLIC_APP_BASE_URL",
+        "name_lead_order_webhook_secret": "NAME_LEAD_ORDER_WEBHOOK_SECRET",
+        "meta_graph_api_version": "META_GRAPH_API_VERSION",
+        "meta_access_token": "META_ACCESS_TOKEN",
+        "meta_page_public_content_access_approved": "META_PAGE_PUBLIC_CONTENT_ACCESS_APPROVED",
+        "instagram_access_token": "INSTAGRAM_ACCESS_TOKEN",
+        "instagram_business_account_id": "INSTAGRAM_BUSINESS_ACCOUNT_ID",
     }
 
     updates: dict[str, str] = {}
