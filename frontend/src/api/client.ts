@@ -580,7 +580,7 @@ export const api = {
   verifyPublicNameRequest: (token: string) =>
     request<{ status: string; message: string }>(`/public/name-request/verify?token=${encodeURIComponent(token)}`),
   getNameLeadRevenue: () =>
-    request<{ platforms: Array<{source: string; currency: string; orders: number; revenue: number; customers: number}>; total_orders: number; total_revenue: number; note: string }>("/name-leads/revenue"),
+    request<{ platforms: Array<{source: string; submitted: number; verified: number; orders: number; revenue_by_currency: Record<string, number>; customers: number; conversion_rate: number}>; total_orders: number; total_verified_consents: number; note: string }>("/name-leads/revenue"),
 
   getNameLeadDashboard: () =>
     request<any>("/name-leads/dashboard"),
