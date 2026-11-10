@@ -13,23 +13,6 @@ const statusLabels: Record<string, string> = {
 const statusOptions = ["new", "reviewed", "ready_to_contact", "contacted", "email_consented", "email_sent", "replied", "converted", "dismissed"];
 
 function LeadCard({ lead, onStatus }: { lead: NameIntentLead; onStatus: (id: string, status: string) => void }) {
-  const [email, setEmail] = useState("");
-  const [consent, setConsent] = useState(false);
-  const [consentSaved, setConsentSaved] = useState(false);
-  const [followupStatus, setFollowupStatus] = useState("");
-  const [emailError, setEmailError] = useState("");
-  const saveConsent = async () => {
-    try {
-      setEmailError("");
-      await api.recordNameLeadConsent(lead.id, { email, consent_confirmed: consent, consent_source: lead.url, consent_evidence: "User voluntarily provided this email and explicitly checked the consent box in the lead management workflow." });
-      setConsentSaved(true);
-      setFollowupStatus("consented");
-    } catch (error) { setEmailError((error as Error).message); }
-  };
-  const startFollowup = async () => {
-    try { const result = await api.startNameLeadFollowup(lead.id); setFollowupStatus(String(result.followup.status || "active")); setEmailError(""); }
-    catch (error) { setEmailError((error as Error).message); }
-  };
   return (
     <Card>
       <CardContent className="p-5 space-y-3">
@@ -66,20 +49,9 @@ function LeadCard({ lead, onStatus }: { lead: NameIntentLead; onStatus: (id: str
             </Button>
           </div>
         )}
-        <div className="rounded-lg border p-3 space-y-2">
-          <div className="font-semibold text-sm">邮件联系（仅限用户主动同意）</div>
-          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="用户主动提供的邮箱地址" />
-          <label className="flex items-start gap-2 text-xs text-muted-foreground">
-            <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-            已核实用户明确同意接收中文起名服务邮件，并已记录同意证据。
-          </label>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="outline" disabled={!email || !consent} onClick={saveConsent}>保存邮箱与同意记录</Button>
-            <Button size="sm" disabled={!consentSaved} onClick={startFollowup}>发送首封邮件</Button>
-            {followupStatus && <Badge variant="outline">{followupStatus}</Badge>}
-          </div>
-          {emailError && <p className="text-xs text-destructive">{emailError}</p>}
-          <p className="text-xs text-muted-foreground">保存同意不会自动发送。发送首封邮件前会检查 SMTP 测试状态；后续按设置执行，收到回复或退订后停止。</p>
+        <div className="rounded-lg border p-3 text-sm space-y-1">
+          <strong>邮箱授权状态由用户自主确认</strong>
+          <p className="text-muted-foreground">请通过上方专属起名表单链接邀请用户提交邮箱并完成 24 小时内的邮件验证。验证成功后，系统会自动将邮箱和授权证据加入跟进队列。</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {statusOptions.map((status) => (
