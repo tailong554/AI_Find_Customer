@@ -111,7 +111,7 @@ class Settings(BaseSettings):
     minimax_api_base: str = "https://api.minimax.io/v1"
     # Agnes AI uses an OpenAI-compatible API gateway.
     agnes_api_key: str = ""
-    agnes_api_base: str = "https://apihub.agnes-ai.com/v1"
+    agnes_api_base: str = ""
     email_openai_api_key: str = ""
     email_anthropic_api_key: str = ""
     email_openrouter_api_key: str = ""
