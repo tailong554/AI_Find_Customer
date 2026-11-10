@@ -1224,6 +1224,13 @@ export function SettingsPage() {
         NAME_LEAD_EMAIL_REPLY_CHECK_INTERVAL_MINUTES: "name_lead_email_reply_check_interval_minutes",
         NAME_LEAD_EMAIL_FIRST_FOLLOWUP_DAYS: "name_lead_email_first_followup_days",
         NAME_LEAD_EMAIL_SECOND_FOLLOWUP_DAYS: "name_lead_email_second_followup_days",
+        PUBLIC_APP_BASE_URL: "public_app_base_url",
+        NAME_LEAD_ORDER_WEBHOOK_SECRET: "name_lead_order_webhook_secret",
+        META_GRAPH_API_VERSION: "meta_graph_api_version",
+        META_ACCESS_TOKEN: "meta_access_token",
+        META_PAGE_PUBLIC_CONTENT_ACCESS_APPROVED: "meta_page_public_content_access_approved",
+        INSTAGRAM_ACCESS_TOKEN: "instagram_access_token",
+        INSTAGRAM_BUSINESS_ACCOUNT_ID: "instagram_business_account_id",
       };
       for (const [envKey, fieldKey] of Object.entries(keyMap)) {
         if (data.settings[envKey] !== undefined) {
@@ -1307,6 +1314,18 @@ export function SettingsPage() {
       <FieldGroup title="中文起名潜客自动搜索" icon={<Search className="h-5 w-5 text-primary" />} description="定时搜索公开帖子。默认关闭；建议先手动测试搜索结果，再开启每 6 小时一次。" fields={[{key:"name_lead_auto_search_enabled",label:"自动搜索（true / false）",placeholder:"false"},{key:"name_lead_search_interval_hours",label:"搜索间隔（小时）",placeholder:"6"},{key:"name_lead_country_code",label:"国家代码",placeholder:"us"},{key:"name_lead_max_results_per_query",label:"每个关键词结果数",placeholder:"6"},{key:"name_lead_max_candidates",label:"每轮候选上限",placeholder:"40"}]} values={values} onChange={handleChange} />
 
       <FieldGroup title="中文起名邮件跟进" icon={<Mail className="h-5 w-5 text-primary" />} description="仅对已明确同意并由你启动首封邮件的用户生效。请先在 SMTP/IMAP 面板测试连接。" fields={[{key:"name_lead_email_auto_followup_enabled",label:"自动发送后续邮件（true / false）",placeholder:"false"},{key:"name_lead_email_reply_detection_enabled",label:"自动检测回信（true / false）",placeholder:"false"},{key:"name_lead_email_reply_check_interval_minutes",label:"回信检测间隔（分钟）",placeholder:"15"},{key:"name_lead_email_first_followup_days",label:"首封后第2封间隔（天）",placeholder:"3"},{key:"name_lead_email_second_followup_days",label:"第2封后第3封间隔（天）",placeholder:"4"}]} values={values} onChange={handleChange} />
+
+      <FieldGroup title="社交平台官方 API" icon={<Globe className="h-5 w-5 text-primary" />} description="Instagram 需要 Professional 账号和 Meta 权限；Facebook 需要 Page Public Content Access 审批。TikTok 商业获客暂用公开索引，不使用仅限学术研究的 Research API。" fields={[
+        {key:"instagram_access_token",label:"Instagram Access Token",placeholder:"Meta OAuth token"},
+        {key:"instagram_business_account_id",label:"Instagram Professional User ID",placeholder:"IG User ID"},
+        {key:"meta_access_token",label:"Meta Access Token（Facebook Pages）",placeholder:"Meta token"},
+        {key:"meta_page_public_content_access_approved",label:"Facebook Page Public Content Access 已获批（true / false）",placeholder:"false"},
+        {key:"meta_graph_api_version",label:"Meta Graph API Version",placeholder:"v26.0"},
+      ]} values={values} onChange={handleChange} />
+      <FieldGroup title="公开表单与订单归因" icon={<LinkIcon className="h-5 w-5 text-primary" />} description="公开表单必须配置 HTTPS 访问地址。订单 webhook 密钥只保存在服务器设置中，不要分享给前端。" fields={[
+        {key:"public_app_base_url",label:"公开网站 URL",placeholder:"https://your-domain.com"},
+        {key:"name_lead_order_webhook_secret",label:"订单 Webhook Secret",placeholder:"随机生成的长密钥"},
+      ]} values={values} onChange={handleChange} />
 
       {/* Search */}
       <FieldGroup
