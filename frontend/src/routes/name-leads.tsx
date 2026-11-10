@@ -126,10 +126,10 @@ export function NameLeadsPage() {
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div><p className="text-xs text-muted-foreground">已归因订单</p><p className="text-2xl font-bold">{revenue.data?.total_orders ?? 0}</p></div>
-            <div><p className="text-xs text-muted-foreground">收入（不同币种请分开看）</p><p className="text-2xl font-bold">{(revenue.data?.total_revenue ?? 0).toFixed(2)}</p></div>
+            <div><p className="text-xs text-muted-foreground">已验证邮箱授权</p><p className="text-2xl font-bold">{revenue.data?.total_verified_consents ?? 0}</p></div>
           </div>
           <div className="space-y-2 text-sm">
-            {(revenue.data?.platforms ?? []).map((item) => <div key={item.source + item.currency} className="flex justify-between border-b pb-2"><span>{item.source} · {item.currency}</span><strong>{item.orders} 单 · {Number(item.revenue).toFixed(2)}</strong></div>)}
+            {(revenue.data?.platforms ?? []).map((item) => <div key={item.source} className="flex flex-col gap-1 border-b pb-2"><div className="flex justify-between"><span>{item.source}</span><strong>{item.orders} 单 · 转化 {item.conversion_rate}%</strong></div><div className="text-xs text-muted-foreground">提交 {item.submitted} · 已验证 {item.verified} · 收入 {Object.entries(item.revenue_by_currency).map(([currency, amount]) => `${currency} ${Number(amount).toFixed(2)}`).join(" / ") || "暂无"}</div></div>)}
           </div>
           <p className="text-xs text-muted-foreground">订单数据需要支付平台向 /api/v1/public/orders 回传成功付款事件。未配置 webhook 时不会自动出现订单。</p>
         </CardContent>
