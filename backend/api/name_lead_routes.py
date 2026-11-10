@@ -134,14 +134,153 @@ def _connect() -> sqlite3.Connection:
             reason TEXT NOT NULL DEFAULT '',
             evidence_quote TEXT NOT NULL DEFAULT '',
             reply_draft TEXT NOT NULL DEFAULT '',
+            need_summary TEXT NOT NULL DEFAULT '',
+            buying_signal_summary TEXT NOT NULL DEFAULT '',
+            need_clarity_score INTEGER NOT NULL DEFAULT 0,
+            purchase_stage_score INTEGER NOT NULL DEFAULT 0,
+            urgency_score INTEGER NOT NULL DEFAULT 0,
+            service_fit_score INTEGER NOT NULL DEFAULT 0,
+            contactability_score INTEGER NOT NULL DEFAULT 0,
+            score_explanation TEXT NOT NULL DEFAULT '',
+            first_seen_at TEXT NOT NULL DEFAULT '',
+            last_seen_at TEXT NOT NULL DEFAULT '',
+            search_count INTEGER NOT NULL DEFAULT 1,
             status TEXT NOT NULL DEFAULT 'new',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )
         """
     )
+    # Add columns safely for existing installations created by earlier versions.
+    existing = {str(row["name"]) for row in conn.execute("PRAGMA table_info(name_intent_leads)").fetchall()}
+    migrations = {
+        "need_summary": "TEXT NOT NULL DEFAULT ''",
+        "buying_signal_summary": "TEXT NOT NULL DEFAULT ''",
+        "need_clarity_score": "INTEGER NOT NULL DEFAULT 0",
+        "purchase_stage_score": "INTEGER NOT NULL DEFAULT 0",
+        "urgency_score": "INTEGER NOT NULL DEFAULT 0",
+        "service_fit_score": "INTEGER NOT NULL DEFAULT 0",
+        "contactability_score": "INTEGER NOT NULL DEFAULT 0",
+        "score_explanation": "TEXT NOT NULL DEFAULT ''",
+        "first_seen_at": "TEXT NOT NULL DEFAULT ''",
+        "last_seen_at": "TEXT NOT NULL DEFAULT ''",
+        "search_count": "INTEGER NOT NULL DEFAULT 1",
+    }
+    for column, definition in migrations.items():
+        if column not in existing:
+            conn.execute(f"ALTER TABLE name_intent_leads ADD COLUMN {column} {definition}")
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS name_lead_search_runs (
+            id TEXT PRIMARY KEY,
+            status TEXT NOT NULL DEFAULT 'running',
+            provider TEXT NOT NULL DEFAULT '',
+            queries_total INTEGER NOT NULL DEFAULT 0,
+            queries_completed INTEGER NOT NULL DEFAULT 0,
+            raw_result_count INTEGER NOT NULL DEFAULT 0,
+            candidate_count INTEGER NOT NULL DEFAULT 0,
+            direct_requests INTEGER NOT NULL DEFAULT 0,
+            high_intent_count INTEGER NOT NULL DEFAULT 0,
+            error_count INTEGER NOT NULL DEFAULT 0,
+            platform_counts_json TEXT NOT NULL DEFAULT '{}',
+            started_at TEXT NOT NULL,
+            finished_at TEXT NOT NULL DEFAULT '',
+            error_summary TEXT NOT NULL DEFAULT ''
+        )
+        """
+    )
     conn.commit()
     return conn
+
+
+def _create_search_run(run_id: str, query_count: int) -> None:
+    with _connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO name_lead_search_runs
+            (id, status, queries_total, started_at)
+            VALUES (?, 'running', ?, ?)
+            """,
+            (run_id, query_count, _now()),
+        )
+        conn.commit()
+
+
+def _update_search_progress(
+    run_id: str,
+    *,
+    provider: str | None = None,
+    queries_completed: int = 0,
+    raw_result_count: int = 0,
+    error_count: int = 0,
+) -> None:
+    with _connect() as conn:
+        conn.execute(
+            """
+            UPDATE name_lead_search_runs
+            SET provider=CASE WHEN ? IS NULL OR ?='' THEN provider ELSE ? END,
+                queries_completed=queries_completed+?,
+                raw_result_count=raw_result_count+?,
+                error_count=error_count+?
+            WHERE id=?
+            """,
+            (provider, provider, provider, queries_completed, raw_result_count, error_count, run_id),
+        )
+        conn.commit()
+
+
+def _finish_search_run(
+    run_id: str,
+    *,
+    status: str,
+    candidate_count: int = 0,
+    direct_requests: int = 0,
+    high_intent_count: int = 0,
+    platform_counts: dict[str, int] | None = None,
+    error_summary: str = "",
+) -> None:
+    with _connect() as conn:
+        conn.execute(
+            """
+            UPDATE name_lead_search_runs
+            SET status=?, candidate_count=?, direct_requests=?, high_intent_count=?,
+                platform_counts_json=?, error_summary=?, finished_at=?
+            WHERE id=?
+            """,
+            (
+                status, candidate_count, direct_requests, high_intent_count,
+                json.dumps(platform_counts or {}, ensure_ascii=False),
+                error_summary[:1000], _now() if status != "running" else "", run_id,
+            ),
+        )
+        conn.commit()
+
+
+def _score_dimensions(row: dict, fallback: dict | None = None) -> dict:
+    fallback = fallback or {}
+    limits = {
+        "need_clarity_score": 3,
+        "purchase_stage_score": 3,
+        "urgency_score": 3,
+        "service_fit_score": 3,
+        "contactability_score": 2,
+    }
+    scores: dict[str, int] = {}
+    for key, maximum in limits.items():
+        try:
+            value = int(row.get(key, fallback.get(key, 0)))
+        except (TypeError, ValueError):
+            value = int(fallback.get(key, 0))
+        scores[key] = max(0, min(maximum, value))
+    total = (
+        scores["need_clarity_score"] / 3 * 25
+        + scores["purchase_stage_score"] / 3 * 25
+        + scores["urgency_score"] / 3 * 15
+        + scores["service_fit_score"] / 3 * 25
+        + scores["contactability_score"] / 2 * 10
+    )
+    scores["intent_score"] = max(0, min(100, round(total)))
+    return scores
 
 
 def _canonical_url(value: str) -> str:
@@ -184,34 +323,74 @@ def _heuristic_classification(candidate: dict) -> dict:
     text = f"{candidate.get('title', '')} {candidate.get('snippet', '')}".lower()
     direct_hits = [phrase for phrase in DIRECT_PHRASES if phrase in text]
     research_hits = [phrase for phrase in RESEARCH_PHRASES if phrase in text]
+    platform = str(candidate.get("source_platform", "Web"))
     if direct_hits:
-        score = min(96, 76 + 5 * len(direct_hits))
+        dimensions = _score_dimensions({
+            "need_clarity_score": 3,
+            "purchase_stage_score": 2,
+            "urgency_score": 0,
+            "service_fit_score": 3,
+            "contactability_score": 2,
+        })
+        reply = (
+            "That sounds like a fun idea! A Chinese name is best when the characters, meaning, and pronunciation all fit. "
+            "If you share the meaning or style you like, I can suggest a few natural options."
+        )
+        if platform == "Reddit":
+            reply = (
+                "A good Chinese name should sound natural and have a meaning that fits you, rather than being a literal translation. "
+                "If you share the meaning, pronunciation, or style you prefer, I can suggest a few options and explain each character."
+            )
+        elif platform in {"TikTok", "Instagram"}:
+            reply = (
+                "Love this idea! A Chinese name should have a beautiful meaning and sound natural. "
+                "Share the vibe or meaning you want and I can suggest a few options ✨"
+            )
+        elif platform == "Facebook":
+            reply = (
+                "Happy to help you explore a Chinese name. The best choice depends on the meaning and style you prefer. "
+                "If you share a little about what you want the name to express, I can suggest some options."
+            )
         return {
             "intent_type": "direct_request",
-            "intent_score": score,
-            "purchase_signal": "unknown",
-            "reason": "The public post appears to ask for a Chinese name or personalized suggestions.",
+            **dimensions,
+            "purchase_signal": "possible",
+            "reason": "The public post appears to ask for a personal Chinese name or personalized suggestions.",
             "evidence_quote": direct_hits[0],
-            "reply_draft": (
-                "A good Chinese name should sound natural and have a meaning that fits you. "
-                "If you share the meaning or style you prefer, I can suggest a few options and explain each character."
-            ),
+            "need_summary": "The author is looking for a Chinese name for personal use.",
+            "buying_signal_summary": "They are actively seeking suggestions; willingness to pay is not established.",
+            "score_explanation": "Clear personal request and strong service fit; urgency and payment intent are not stated.",
+            "reply_draft": reply,
         }
     if research_hits:
+        dimensions = _score_dimensions({
+            "need_clarity_score": 1,
+            "purchase_stage_score": 0,
+            "urgency_score": 0,
+            "service_fit_score": 1,
+            "contactability_score": 0,
+        })
         return {
             "intent_type": "research",
-            "intent_score": 30,
+            **dimensions,
             "purchase_signal": "unknown",
             "reason": "The result appears informational rather than a direct request for a personal name.",
             "evidence_quote": research_hits[0],
+            "need_summary": "The author appears to be researching Chinese names generally.",
+            "buying_signal_summary": "No clear request for a paid or personalized naming service.",
+            "score_explanation": "Informational content with no clear personal purchase request.",
             "reply_draft": "",
         }
+    dimensions = _score_dimensions({})
     return {
         "intent_type": "irrelevant",
-        "intent_score": 5,
+        **dimensions,
         "purchase_signal": "unknown",
         "reason": "No clear first-person request for a Chinese name was found in the indexed text.",
         "evidence_quote": "",
+        "need_summary": "",
+        "buying_signal_summary": "No buying signal found.",
+        "score_explanation": "No explicit personal need was identified in the indexed text.",
         "reply_draft": "",
     }
 
@@ -240,28 +419,42 @@ async def _classify_batch(candidates: list[dict]) -> list[dict]:
     try:
         llm = LLMTool(agent="name_intent_hunter")
         payload = [
-            {"id": x["id"], "title": x["title"], "snippet": x["snippet"], "url": x["url"]}
+            {
+                "id": x["id"],
+                "title": x["title"],
+                "snippet": x["snippet"],
+                "url": x["url"],
+                "source_platform": x.get("source_platform", "Web"),
+            }
             for x in candidates
         ]
         raw = await llm.generate(
             json.dumps(payload, ensure_ascii=False),
             system=(
-                "You qualify public web posts for a small service that creates meaningful Chinese names "
-                "for non-Chinese-speaking customers. Classify ONLY what the post itself says. "
+                "You qualify public web posts for a personalized Chinese-name service. Classify ONLY what the public post says. "
                 "Do not infer ethnicity, age, gender, location, income, identity, or willingness to pay. "
-                "A direct_request requires first-person wording or an explicit request for a personal Chinese name. "
-                "A general discussion, list, translation question, or cultural question is research or irrelevant. "
-                "purchase_signal must be explicit only when the post itself mentions paying, hiring, commissioning, "
-                "or buying a naming service; otherwise use unknown or possible only for a clear service-seeking request. "
-                "evidence_quote must be an exact short substring of title/snippet; never invent evidence. "
-                "Write a short, helpful, non-pushy reply_draft only for direct_request. Do not include a link. "
-                "Return JSON only in this shape: "
+                "A direct_request requires a first-person request for a personal Chinese name. "
+                "A general list, cultural discussion, translation question, or name-history question is research or irrelevant. "
+                "Rate five evidence-based dimensions: need_clarity_score 0-3, purchase_stage_score 0-3, "
+                "urgency_score 0-3, service_fit_score 0-3, contactability_score 0-2. "
+                "Purchase stage: 0 research, 1 considering, 2 actively asking for help, 3 explicitly seeking to hire/buy. "
+                "Urgency: 0 unstated, 1 soon, 2 time-bound, 3 urgent. Contactability is ONLY whether the public post invites "
+                "a public response; never infer or extract private contact details. "
+                "purchase_signal is explicit only if the post itself mentions paying/buying/hiring; possible for a clear request "
+                "for personalized help; otherwise unknown. "
+                "need_summary and buying_signal_summary must be short and grounded in the post. "
+                "evidence_quote must be an exact substring of title/snippet. "
+                "Write a short non-pushy public reply_draft adapted to the source platform: Reddit conversational and helpful; "
+                "TikTok/Instagram concise and natural; Facebook warm and clear. Never include links or claim affiliation. "
+                "Return JSON only: "
                 '{"leads":[{"id":"...","intent_type":"direct_request|research|irrelevant",'
-                '"intent_score":0,"purchase_signal":"explicit|possible|unknown","reason":"...",'
-                '"evidence_quote":"...","reply_draft":"..."}]}'
+                '"purchase_signal":"explicit|possible|unknown","need_clarity_score":0,"purchase_stage_score":0,'
+                '"urgency_score":0,"service_fit_score":0,"contactability_score":0,"reason":"...",'
+                '"evidence_quote":"...","need_summary":"...","buying_signal_summary":"...",'
+                '"score_explanation":"...","reply_draft":"..."}]}'
             ),
             temperature=0.1,
-            max_tokens=5000,
+            max_tokens=6500,
             response_format={"type": "json_object"},
         )
         parsed = _extract_json_object(raw)
@@ -277,24 +470,24 @@ async def _classify_batch(candidates: list[dict]) -> list[dict]:
             purchase_signal = str(row.get("purchase_signal", base["purchase_signal"]))
             if purchase_signal not in {"explicit", "possible", "unknown"}:
                 purchase_signal = "unknown"
-            try:
-                score = max(0, min(100, int(row.get("intent_score", base["intent_score"]))))
-            except (TypeError, ValueError):
-                score = base["intent_score"]
-            if intent_type == "irrelevant":
-                score = min(score, 25)
-            elif intent_type == "research":
-                score = min(score, 55)
             evidence = str(row.get("evidence_quote", "") or "").strip()
             searchable = f"{candidate['title']} {candidate['snippet']}".lower()
             if evidence and evidence.lower() not in searchable:
                 evidence = ""
+            dimension_values = _score_dimensions(row, base)
+            if intent_type == "irrelevant":
+                dimension_values = _score_dimensions({})
+            elif intent_type == "research":
+                dimension_values["intent_score"] = min(dimension_values["intent_score"], 55)
             classified.append({
                 "intent_type": intent_type,
-                "intent_score": score,
+                **dimension_values,
                 "purchase_signal": purchase_signal,
                 "reason": str(row.get("reason", base["reason"]))[:400],
                 "evidence_quote": evidence,
+                "need_summary": str(row.get("need_summary", base["need_summary"]))[:500],
+                "buying_signal_summary": str(row.get("buying_signal_summary", base["buying_signal_summary"]))[:500],
+                "score_explanation": str(row.get("score_explanation", base["score_explanation"]))[:500],
                 "reply_draft": str(row.get("reply_draft", base["reply_draft"]))[:1200]
                 if intent_type == "direct_request" else "",
             })
@@ -343,7 +536,11 @@ async def _search_one(tool, query: str, request: NameLeadSearchRequest) -> tuple
     return query, results
 
 
-async def _search_candidates(request: NameLeadSearchRequest) -> tuple[list[dict], str, list[str]]:
+async def _search_candidates(
+    request: NameLeadSearchRequest,
+    *,
+    run_id: str = "",
+) -> tuple[list[dict], str, list[str]]:
     settings = get_settings()
     if settings.serper_api_key:
         tool = GoogleSearchTool(settings)
@@ -358,14 +555,21 @@ async def _search_candidates(request: NameLeadSearchRequest) -> tuple[list[dict]
         )
 
     queries = _build_queries(request)
+    if run_id:
+        _update_search_progress(run_id, provider=provider)
     semaphore = asyncio.Semaphore(3)
 
     async def bounded(query: str):
         async with semaphore:
             try:
-                return await _search_one(tool, query, request)
+                result_query, results = await _search_one(tool, query, request)
+                if run_id:
+                    _update_search_progress(run_id, queries_completed=1, raw_result_count=len(results))
+                return result_query, results
             except Exception as exc:
                 logger.warning("[NameLeadHunter] Search failed for %r: %s", query, exc)
+                if run_id:
+                    _update_search_progress(run_id, queries_completed=1, error_count=1)
                 return query, []
 
     try:
@@ -410,8 +614,11 @@ def _save_leads(leads: list[dict]) -> int:
                 INSERT INTO name_intent_leads (
                     id, title, url, snippet, source_platform, source_domain, search_query,
                     intent_type, intent_score, purchase_signal, reason, evidence_quote,
-                    reply_draft, status, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?)
+                    reply_draft, need_summary, buying_signal_summary, need_clarity_score,
+                    purchase_stage_score, urgency_score, service_fit_score, contactability_score,
+                    score_explanation, first_seen_at, last_seen_at, search_count, status,
+                    created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'new', ?, ?)
                 ON CONFLICT(url) DO UPDATE SET
                     title=excluded.title,
                     snippet=excluded.snippet,
@@ -424,13 +631,28 @@ def _save_leads(leads: list[dict]) -> int:
                     reason=excluded.reason,
                     evidence_quote=excluded.evidence_quote,
                     reply_draft=excluded.reply_draft,
+                    need_summary=excluded.need_summary,
+                    buying_signal_summary=excluded.buying_signal_summary,
+                    need_clarity_score=excluded.need_clarity_score,
+                    purchase_stage_score=excluded.purchase_stage_score,
+                    urgency_score=excluded.urgency_score,
+                    service_fit_score=excluded.service_fit_score,
+                    contactability_score=excluded.contactability_score,
+                    score_explanation=excluded.score_explanation,
+                    last_seen_at=excluded.last_seen_at,
+                    search_count=name_intent_leads.search_count+1,
                     updated_at=excluded.updated_at
                 """,
                 (
                     lead["id"], lead["title"], lead["url"], lead["snippet"],
                     lead["source_platform"], lead["source_domain"], lead["search_query"],
                     lead["intent_type"], lead["intent_score"], lead["purchase_signal"],
-                    lead["reason"], lead["evidence_quote"], lead["reply_draft"], now, now,
+                    lead["reason"], lead["evidence_quote"], lead["reply_draft"],
+                    lead.get("need_summary", ""), lead.get("buying_signal_summary", ""),
+                    lead.get("need_clarity_score", 0), lead.get("purchase_stage_score", 0),
+                    lead.get("urgency_score", 0), lead.get("service_fit_score", 0),
+                    lead.get("contactability_score", 0), lead.get("score_explanation", ""),
+                    now, now, now, now,
                 ),
             )
             inserted += max(cursor.rowcount, 0)
@@ -443,43 +665,143 @@ def _row_to_dict(row: sqlite3.Row) -> dict:
 
 @router.post("/name-leads/search", dependencies=[Depends(require_api_access)])
 async def search_name_leads(request: NameLeadSearchRequest):
-    """Search public posts and rank explicit requests for personal Chinese names."""
-    candidates, provider, queries = await _search_candidates(request)
-    classifications: list[dict] = []
-    for start in range(0, len(candidates), 12):
-        classifications.extend(await _classify_batch(candidates[start:start + 12]))
+    """Search public posts, track progress, and rank leads with explainable dimensions."""
+    queries = _build_queries(request)
+    run_id = uuid.uuid4().hex[:16]
+    _create_search_run(run_id, len(queries))
+    try:
+        candidates, provider, queries = await _search_candidates(request, run_id=run_id)
+        classifications: list[dict] = []
+        for start in range(0, len(candidates), 12):
+            classifications.extend(await _classify_batch(candidates[start:start + 12]))
 
-    leads = []
-    for candidate, classification in zip(candidates, classifications):
-        leads.append({**candidate, **classification, "status": "new"})
-    _save_leads(leads)
-    leads.sort(key=lambda item: item["intent_score"], reverse=True)
-    return {
-        "provider": provider,
-        "queries_run": queries,
-        "candidate_count": len(candidates),
-        "direct_requests": sum(1 for item in leads if item["intent_type"] == "direct_request"),
-        "high_intent_count": sum(1 for item in leads if item["intent_score"] >= 70),
-        "leads": leads,
-        "notice": "仅检索公开帖子；评分依据可见文本，不代表用户愿意付费。请人工审核后再回复。",
+        leads = [{**candidate, **classification, "status": "new"} for candidate, classification in zip(candidates, classifications)]
+        _save_leads(leads)
+        leads.sort(key=lambda item: item["intent_score"], reverse=True)
+        direct_requests = sum(1 for item in leads if item["intent_type"] == "direct_request")
+        high_intent = sum(1 for item in leads if item["intent_score"] >= 70)
+        platform_counts: dict[str, int] = {}
+        for item in leads:
+            platform = str(item.get("source_platform", "Web"))
+            platform_counts[platform] = platform_counts.get(platform, 0) + 1
+        _finish_search_run(
+            run_id,
+            status="completed",
+            candidate_count=len(candidates),
+            direct_requests=direct_requests,
+            high_intent_count=high_intent,
+            platform_counts=platform_counts,
+        )
+        return {
+            "run_id": run_id,
+            "provider": provider,
+            "queries_run": queries,
+            "candidate_count": len(candidates),
+            "direct_requests": direct_requests,
+            "high_intent_count": high_intent,
+            "platform_counts": platform_counts,
+            "leads": leads,
+            "notice": "只分析公开帖子。意向评分是文本证据匹配度，不代表真实付费意愿；回复须人工审核。",
+        }
+    except Exception as exc:
+        _finish_search_run(run_id, status="failed", error_summary=str(exc))
+        raise
+
+
+@router.get("/name-leads/dashboard", dependencies=[Depends(require_api_access)])
+async def get_name_lead_dashboard():
+    """Return funnel metrics, platform distribution, and active search progress."""
+    today = datetime.now(timezone.utc).date().isoformat()
+    with _connect() as conn:
+        runs = conn.execute(
+            "SELECT * FROM name_lead_search_runs ORDER BY started_at DESC LIMIT 8"
+        ).fetchall()
+        lead_rows = conn.execute(
+            "SELECT * FROM name_intent_leads WHERE created_at >= ?",
+            (today,),
+        ).fetchall()
+        all_rows = conn.execute("SELECT * FROM name_intent_leads").fetchall()
+        active = conn.execute(
+            "SELECT * FROM name_lead_search_runs WHERE status='running' ORDER BY started_at DESC LIMIT 1"
+        ).fetchone()
+        email_stats = conn.execute(
+            """
+            SELECT status, COUNT(*) AS total
+            FROM name_lead_email_followups
+            GROUP BY status
+            """
+        ).fetchall() if conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='name_lead_email_followups'"
+        ).fetchone() else []
+    todays = [dict(row) for row in lead_rows]
+    all_leads = [dict(row) for row in all_rows]
+    today_runs = [dict(row) for row in runs if str(row["started_at"]).startswith(today)]
+    analyzed_today = sum(int(row.get("candidate_count", 0)) for row in today_runs)
+    related = sum(1 for row in all_leads if row.get("intent_type") == "direct_request")
+    high_intent = sum(1 for row in all_leads if int(row.get("intent_score", 0)) >= 70)
+    contacted = sum(1 for row in all_leads if row.get("status") in {"replied", "contacted", "email_sent", "converted"})
+    platform_counts: dict[str, int] = {}
+    for row in all_leads:
+        platform = str(row.get("source_platform", "Web"))
+        platform_counts[platform] = platform_counts.get(platform, 0) + 1
+    funnel = {
+        "analyzed": analyzed_today,
+        "related": related,
+        "purchase_intent": sum(1 for row in all_leads if row.get("purchase_signal") in {"possible", "explicit"}),
+        "worth_contacting": high_intent,
+        "contacted": contacted,
     }
+    scores = [int(row.get("intent_score", 0)) for row in todays]
+    return {
+        "today_new_leads": len(todays),
+        "today_analyzed": analyzed_today,
+        "today_direct_requests": sum(1 for row in todays if row.get("intent_type") == "direct_request"),
+        "today_worth_contacting": sum(1 for row in todays if int(row.get("intent_score", 0)) >= 70),
+        "average_intent_score": round(sum(scores) / len(scores)) if scores else 0,
+        "total_leads": len(all_leads),
+        "funnel": funnel,
+        "platform_counts": platform_counts,
+        "email_status_counts": {str(row["status"]): int(row["total"]) for row in email_stats},
+        "active_run": dict(active) if active else None,
+        "recent_runs": [dict(row) for row in runs],
+    }
+
+
+@router.get("/name-leads/search-runs", dependencies=[Depends(require_api_access)])
+async def list_name_lead_search_runs(limit: int = Query(default=20, ge=1, le=100)):
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT * FROM name_lead_search_runs ORDER BY started_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return {"runs": [dict(row) for row in rows], "count": len(rows)}
 
 
 @router.get("/name-leads", dependencies=[Depends(require_api_access)])
 async def list_name_leads(
     status: str | None = Query(default=None),
     min_score: int = Query(default=0, ge=0, le=100),
+    platform: str | None = Query(default=None),
+    intent_type: str | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=200),
 ):
-    """List saved public-post leads."""
-    allowed = {"new", "reviewed", "replied", "converted", "dismissed"}
+    """List saved public-post leads with platform and intent filters."""
+    allowed = {"new", "reviewed", "ready_to_contact", "contacted", "email_consented", "email_sent", "replied", "converted", "dismissed"}
     if status and status not in allowed:
         raise HTTPException(status_code=400, detail="Invalid lead status.")
+    if intent_type and intent_type not in {"direct_request", "research", "irrelevant"}:
+        raise HTTPException(status_code=400, detail="Invalid intent_type.")
     sql = "SELECT * FROM name_intent_leads WHERE intent_score >= ?"
     params: list[object] = [min_score]
     if status:
         sql += " AND status = ?"
         params.append(status)
+    if platform:
+        sql += " AND source_platform = ?"
+        params.append(platform)
+    if intent_type:
+        sql += " AND intent_type = ?"
+        params.append(intent_type)
     sql += " ORDER BY intent_score DESC, updated_at DESC LIMIT ?"
     params.append(limit)
     with _connect() as conn:
