@@ -188,6 +188,13 @@ class Settings(BaseSettings):
     name_lead_email_reply_check_interval_minutes: int = 15
     name_lead_email_first_followup_days: int = 3
     name_lead_email_second_followup_days: int = 4
+    public_app_base_url: str = ""
+    name_lead_order_webhook_secret: str = ""
+    meta_graph_api_version: str = "v26.0"
+    meta_access_token: str = ""
+    meta_page_public_content_access_approved: bool = False
+    instagram_access_token: str = ""
+    instagram_business_account_id: str = ""
 
     # --- Langfuse (observability) ---
     langfuse_public_key: str = ""
