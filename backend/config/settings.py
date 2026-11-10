@@ -183,6 +183,11 @@ class Settings(BaseSettings):
     name_lead_country_code: str = "us"
     name_lead_max_results_per_query: int = 6
     name_lead_max_candidates: int = 40
+    name_lead_email_auto_followup_enabled: bool = False
+    name_lead_email_reply_detection_enabled: bool = False
+    name_lead_email_reply_check_interval_minutes: int = 15
+    name_lead_email_first_followup_days: int = 3
+    name_lead_email_second_followup_days: int = 4
 
     # --- Langfuse (observability) ---
     langfuse_public_key: str = ""
