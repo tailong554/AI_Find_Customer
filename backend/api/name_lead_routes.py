@@ -845,31 +845,56 @@ async def update_name_lead_status(lead_id: str, request: NameLeadStatusRequest):
 
 @router.get("/name-leads/revenue", dependencies=[Depends(require_api_access)])
 async def get_name_lead_revenue():
-    """Revenue and funnel metrics attributed to the source platform."""
-    db_path = _database_path()
-    with sqlite3.connect(str(db_path), timeout=20) as conn:
+    """Platform-level lead, confirmed consent, order, and revenue attribution."""
+    with sqlite3.connect(str(_database_path()), timeout=20) as conn:
         conn.row_factory = sqlite3.Row
         has_orders = conn.execute(
             "SELECT 1 FROM sqlite_master WHERE type='table' AND name='name_lead_orders'"
         ).fetchone()
-        if not has_orders:
-            return {"platforms": [], "total_orders": 0, "total_revenue": 0.0}
-        rows = conn.execute(
+        has_consents = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='public_name_consents'"
+        ).fetchone()
+        orders = conn.execute(
             """
             SELECT source, currency, COUNT(*) AS orders, SUM(amount) AS revenue,
                    COUNT(DISTINCT email_hash) AS customers
-            FROM name_lead_orders
-            GROUP BY source, currency
-            ORDER BY revenue DESC
+            FROM name_lead_orders GROUP BY source, currency ORDER BY revenue DESC
             """
-        ).fetchall()
-        total = conn.execute(
-            "SELECT COUNT(*) AS orders, COALESCE(SUM(amount),0) AS revenue FROM name_lead_orders"
-        ).fetchone()
-    platforms = [dict(row) for row in rows]
+        ).fetchall() if has_orders else []
+        consents = conn.execute(
+            """
+            SELECT source, COUNT(*) AS submitted,
+                   SUM(CASE WHEN verified_at <> '' THEN 1 ELSE 0 END) AS verified
+            FROM public_name_consents GROUP BY source
+            """
+        ).fetchall() if has_consents else []
+    consent_map = {str(row["source"]): dict(row) for row in consents}
+    order_map: dict[str, dict] = {}
+    for row in orders:
+        key = str(row["source"])
+        entry = order_map.setdefault(key, {"source": key, "orders": 0, "revenue_by_currency": {}, "customers": 0})
+        entry["orders"] += int(row["orders"])
+        entry["customers"] += int(row["customers"])
+        entry["revenue_by_currency"][str(row["currency"])] = float(row["revenue"] or 0)
+    sources = sorted(set(consent_map) | set(order_map))
+    platforms = []
+    for source in sources:
+        consent = consent_map.get(source, {})
+        order = order_map.get(source, {})
+        verified = int(consent.get("verified", 0) or 0)
+        orders_count = int(order.get("orders", 0) or 0)
+        platforms.append({
+            "source": source,
+            "submitted": int(consent.get("submitted", 0) or 0),
+            "verified": verified,
+            "orders": orders_count,
+            "revenue_by_currency": order.get("revenue_by_currency", {}),
+            "customers": int(order.get("customers", 0) or 0),
+            "conversion_rate": round(orders_count / verified * 100, 2) if verified else 0.0,
+        })
     return {
         "platforms": platforms,
-        "total_orders": int(total["orders"]),
-        "total_revenue": float(total["revenue"]),
-        "note": "Revenue is grouped by currency; do not sum different currencies without conversion.",
+        "total_orders": sum(item["orders"] for item in platforms),
+        "total_verified_consents": sum(item["verified"] for item in platforms),
+        "note": "Orders require a trusted checkout webhook. Revenue is grouped by currency; do not sum currencies without conversion.",
     }
