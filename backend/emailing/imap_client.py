@@ -76,11 +76,26 @@ def search_recent_replies(
             if not raw:
                 continue
             parsed = email.message_from_bytes(raw)
+            body_text = ""
+            if parsed.is_multipart():
+                for part in parsed.walk():
+                    if part.get_content_type() == "text/plain" and not part.get_filename():
+                        payload = part.get_payload(decode=True)
+                        if payload:
+                            charset = part.get_content_charset() or "utf-8"
+                            body_text = payload.decode(charset, errors="replace")[:4000]
+                            break
+            else:
+                payload = parsed.get_payload(decode=True)
+                if payload:
+                    charset = parsed.get_content_charset() or "utf-8"
+                    body_text = payload.decode(charset, errors="replace")[:4000]
             replies.append({
                 "from_address": from_address,
                 "subject": _decode_subject(parsed.get("Subject")),
                 "date": parsed.get("Date", ""),
                 "message_id": parsed.get("Message-ID", ""),
+                "body_text": body_text,
             })
         return replies
     finally:
