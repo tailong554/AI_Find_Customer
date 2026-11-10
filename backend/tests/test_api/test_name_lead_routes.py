@@ -29,3 +29,32 @@ def test_canonical_url_removes_tracking_parameters():
 
 def test_reddit_source_is_detected():
     assert _platform_for("https://www.reddit.com/r/ChineseLanguage/comments/abc/")[0] == "Reddit"
+
+
+
+def test_platform_specific_public_reply_draft_is_generated():
+    result = _heuristic_classification({
+        "title": "I need a Chinese name",
+        "snippet": "Can someone suggest one for me?",
+        "source_platform": "TikTok",
+    })
+    assert result["intent_type"] == "direct_request"
+    assert "✨" in result["reply_draft"]
+    assert result["need_clarity_score"] == 3
+    assert result["service_fit_score"] == 3
+
+
+def test_research_content_has_low_intent_score():
+    result = _heuristic_classification({
+        "title": "Popular Chinese names",
+        "snippet": "History of Chinese names and their meanings.",
+        "source_platform": "Web",
+    })
+    assert result["intent_type"] in {"research", "irrelevant"}
+    assert result["intent_score"] < 70
+
+
+def test_platform_detection_covers_social_channels():
+    assert _platform_for("https://www.tiktok.com/@user/video/123")[0] == "TikTok"
+    assert _platform_for("https://www.instagram.com/p/abc/")[0] == "Instagram"
+    assert _platform_for("https://www.facebook.com/groups/abc/posts/123")[0] == "Facebook"
