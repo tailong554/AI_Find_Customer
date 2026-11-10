@@ -580,6 +580,15 @@ export const api = {
       body: JSON.stringify({ status }),
     }),
 
+  recordNameLeadConsent: (leadId: string, data: { email: string; consent_confirmed: boolean; consent_source: string; consent_evidence: string }) =>
+    request<{ followup: Record<string, unknown> }>(`/name-leads/${leadId}/email-consent`, { method: "POST", body: JSON.stringify(data) }),
+  getNameLeadFollowup: (leadId: string) =>
+    request<{ followup: Record<string, unknown> | null }>(`/name-leads/${leadId}/email-followup`),
+  startNameLeadFollowup: (leadId: string) =>
+    request<{ followup: Record<string, unknown> }>(`/name-leads/${leadId}/email-followup/start`, { method: "POST" }),
+  updateNameLeadFollowupStatus: (leadId: string, status: "paused" | "unsubscribed") =>
+    request<{ followup: Record<string, unknown> }>(`/name-leads/${leadId}/email-followup/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
+
   createHunt: (data: HuntRequest) =>
     request<HuntResponse>("/hunts", {
       method: "POST",
