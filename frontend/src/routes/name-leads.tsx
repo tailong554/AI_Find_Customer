@@ -56,6 +56,7 @@ function LeadCard({ lead, onStatus }: { lead: NameIntentLead; onStatus: (id: str
           ].map(([label, score, max]) => <div key={label} className="rounded-md bg-muted p-2"><div className="text-muted-foreground">{label}</div><strong>{score ?? 0}/{max}</strong></div>)}
         </div>
         <p className="text-xs text-muted-foreground">{lead.score_explanation || lead.reason}</p>
+        <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/name-request?source=${encodeURIComponent(lead.source_platform.toLowerCase())}&ref=${encodeURIComponent(lead.id)}`)}><Copy className="h-3 w-3 mr-2" />复制该线索专属起名表单链接</Button>
         {lead.reply_draft && (
           <div className="rounded-lg bg-muted p-3 space-y-2">
             <div className="text-xs font-semibold">英文回复草稿（人工审核后发布）</div>
