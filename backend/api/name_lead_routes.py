@@ -26,6 +26,7 @@ from config.settings import _resolve_file, get_settings
 from tools.google_search import GoogleSearchTool
 from tools.llm_client import LLMTool
 from tools.web_search import WebSearchTool
+from social_sources.meta_social import search_official_meta_sources, social_source_capabilities
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -599,6 +600,25 @@ async def _search_candidates(
                 break
         if len(deduped) >= request.max_candidates:
             break
+    official_candidates, official_status = await search_official_meta_sources(
+        settings,
+        include_instagram=request.include_instagram,
+        include_facebook=request.include_facebook,
+        max_results=request.max_results_per_query,
+    )
+    for candidate in official_candidates:
+        url = _canonical_url(candidate.get("url", ""))
+        if not url or url in deduped:
+            continue
+        candidate["url"] = url
+        candidate["id"] = _candidate_id(url)
+        deduped[url] = candidate
+        if len(deduped) >= request.max_candidates:
+            break
+    # Record per-source adapter status in the returned provider label for the run.
+    provider = provider + " + official Meta APIs: " + ", ".join(
+        f"{name}={meta.get('mode')}" for name, meta in official_status.items()
+    )
     return list(deduped.values()), provider, queries
 
 
@@ -821,3 +841,35 @@ async def update_name_lead_status(lead_id: str, request: NameLeadStatusRequest):
             raise HTTPException(status_code=404, detail="Name lead not found.")
         row = conn.execute("SELECT * FROM name_intent_leads WHERE id = ?", (lead_id,)).fetchone()
     return {"lead": _row_to_dict(row)}
+
+
+@router.get("/name-leads/revenue", dependencies=[Depends(require_api_access)])
+async def get_name_lead_revenue():
+    """Revenue and funnel metrics attributed to the source platform."""
+    db_path = _database_path()
+    with sqlite3.connect(str(db_path), timeout=20) as conn:
+        conn.row_factory = sqlite3.Row
+        has_orders = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='name_lead_orders'"
+        ).fetchone()
+        if not has_orders:
+            return {"platforms": [], "total_orders": 0, "total_revenue": 0.0}
+        rows = conn.execute(
+            """
+            SELECT source, currency, COUNT(*) AS orders, SUM(amount) AS revenue,
+                   COUNT(DISTINCT email_hash) AS customers
+            FROM name_lead_orders
+            GROUP BY source, currency
+            ORDER BY revenue DESC
+            """
+        ).fetchall()
+        total = conn.execute(
+            "SELECT COUNT(*) AS orders, COALESCE(SUM(amount),0) AS revenue FROM name_lead_orders"
+        ).fetchone()
+    platforms = [dict(row) for row in rows]
+    return {
+        "platforms": platforms,
+        "total_orders": int(total["orders"]),
+        "total_revenue": float(total["revenue"]),
+        "note": "Revenue is grouped by currency; do not sum different currencies without conversion.",
+    }
