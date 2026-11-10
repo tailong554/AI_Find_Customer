@@ -44,7 +44,18 @@ function LeadCard({ lead, onStatus }: { lead: NameIntentLead; onStatus: (id: str
         </a>
         <p className="text-sm text-muted-foreground">{lead.snippet || "搜索结果没有提供摘要。"}</p>
         {lead.evidence_quote && <p className="text-sm border-l-2 pl-3">意向证据：{lead.evidence_quote}</p>}
-        <p className="text-sm">{lead.reason}</p>
+        {lead.need_summary && <p className="text-sm"><strong>需求摘要：</strong>{lead.need_summary}</p>}
+        {lead.buying_signal_summary && <p className="text-sm"><strong>购买信号：</strong>{lead.buying_signal_summary}</p>}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+          {[
+            ["需求明确", lead.need_clarity_score, 3],
+            ["购买阶段", lead.purchase_stage_score, 3],
+            ["紧迫程度", lead.urgency_score, 3],
+            ["服务匹配", lead.service_fit_score, 3],
+            ["公开可互动", lead.contactability_score, 2],
+          ].map(([label, score, max]) => <div key={label} className="rounded-md bg-muted p-2"><div className="text-muted-foreground">{label}</div><strong>{score ?? 0}/{max}</strong></div>)}
+        </div>
+        <p className="text-xs text-muted-foreground">{lead.score_explanation || lead.reason}</p>
         {lead.reply_draft && (
           <div className="rounded-lg bg-muted p-3 space-y-2">
             <div className="text-xs font-semibold">英文回复草稿（人工审核后发布）</div>
@@ -70,9 +81,11 @@ export function NameLeadsPage() {
   const [country, setCountry] = useState("us");
   const [minimumScore, setMinimumScore] = useState(0);
   const [filter, setFilter] = useState("");
+  const [platformFilter, setPlatformFilter] = useState("");
+  const dashboard = useQuery({ queryKey: ["name-lead-dashboard"], queryFn: api.getNameLeadDashboard, refetchInterval: 15000 });
   const [platforms, setPlatforms] = useState({ reddit: true, forums: true, tiktok: true, instagram: true, facebook: true });
   const queryClient = useQueryClient();
-  const leadsQuery = useQuery({ queryKey: ["name-leads", filter, minimumScore], queryFn: () => api.listNameLeads(filter, minimumScore) });
+  const leadsQuery = useQuery({ queryKey: ["name-leads", filter, minimumScore, platformFilter], queryFn: () => api.listNameLeads(filter, minimumScore, platformFilter) });
   const search = useMutation({
     mutationFn: () => api.searchNameLeads({
       country_code: country.trim().toLowerCase(),
@@ -84,7 +97,7 @@ export function NameLeadsPage() {
       include_instagram: platforms.instagram,
       include_facebook: platforms.facebook,
     }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["name-leads"] }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["name-leads"] }); queryClient.invalidateQueries({ queryKey: ["name-lead-dashboard"] }); },
   });
   const update = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) => api.updateNameLeadStatus(id, status),
@@ -98,6 +111,26 @@ export function NameLeadsPage() {
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3"><UserRoundSearch className="h-8 w-8" />中文起名潜客</h1>
         <p className="text-muted-foreground mt-2">发现公开表达过“想给自己取中文名字”的帖子，按文本意向排序。</p>
       </div>
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        {[
+          ["今日新增", dashboard.data?.today_new_leads ?? 0],
+          ["AI分析内容", dashboard.data?.today_analyzed ?? 0],
+          ["明确需求", dashboard.data?.today_direct_requests ?? 0],
+          ["值得联系", dashboard.data?.today_worth_contacting ?? 0],
+        ].map(([label, value]) => <Card key={label}><CardContent className="p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="text-2xl font-bold">{value}</p></CardContent></Card>)}
+      </div>
+      <Card>
+        <CardHeader><CardTitle>获客漏斗与平台分布</CardTitle></CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2 text-sm">
+            {Object.entries(dashboard.data?.funnel ?? {}).map(([key, value]) => <div key={key} className="flex justify-between border-b pb-1"><span>{({analyzed:"分析内容",related:"相关需求",purchase_intent:"有购买信号",worth_contacting:"值得联系",contacted:"已联系"} as Record<string,string>)[key] || key}</span><strong>{String(value)}</strong></div>)}
+          </div>
+          <div className="space-y-2 text-sm">
+            {Object.entries(dashboard.data?.platform_counts ?? {}).map(([key, value]) => <div key={key} className="flex justify-between border-b pb-1"><span>{key}</span><strong>{String(value)}</strong></div>)}
+          </div>
+        </CardContent>
+      </Card>
+      {dashboard.data?.active_run && <Card><CardContent className="p-4 text-sm"><strong>搜索任务运行中</strong><p className="text-muted-foreground mt-1">已完成 {dashboard.data.active_run.queries_completed}/{dashboard.data.active_run.queries_total} 个搜索词，已分析 {dashboard.data.active_run.raw_result_count} 条结果。</p></CardContent></Card>}
       <Card>
         <CardHeader><CardTitle>搜索公开需求</CardTitle></CardHeader>
         <CardContent className="flex flex-col gap-3">
@@ -139,6 +172,9 @@ export function NameLeadsPage() {
       )}
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="text-xl font-semibold mr-auto">已发现的帖子 ({leadsQuery.data?.count ?? 0})</h2>
+        <select className="h-9 rounded-md border bg-background px-3 text-sm" value={platformFilter} onChange={(e) => setPlatformFilter(e.target.value)}>
+          <option value="">全部平台</option>{["Reddit","TikTok","Instagram","Facebook","Quora","Forum","Web"].map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
         <select className="h-9 rounded-md border bg-background px-3 text-sm" value={filter} onChange={(e) => setFilter(e.target.value)}>
           <option value="">全部状态</option>{statusOptions.map((s) => <option key={s} value={s}>{statusLabels[s]}</option>)}
         </select>
