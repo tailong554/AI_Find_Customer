@@ -53,6 +53,7 @@ export function NameLeadsPage() {
   const [country, setCountry] = useState("us");
   const [minimumScore, setMinimumScore] = useState(0);
   const [filter, setFilter] = useState("");
+  const [platforms, setPlatforms] = useState({ reddit: true, forums: true, tiktok: true, instagram: true, facebook: true });
   const queryClient = useQueryClient();
   const leadsQuery = useQuery({ queryKey: ["name-leads", filter, minimumScore], queryFn: () => api.listNameLeads(filter, minimumScore) });
   const search = useMutation({
@@ -60,8 +61,11 @@ export function NameLeadsPage() {
       country_code: country.trim().toLowerCase(),
       max_results_per_query: 6,
       max_candidates: 40,
-      include_reddit: true,
-      include_other_forums: true,
+      include_reddit: platforms.reddit,
+      include_other_forums: platforms.forums,
+      include_tiktok: platforms.tiktok,
+      include_instagram: platforms.instagram,
+      include_facebook: platforms.facebook,
     }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["name-leads"] }),
   });
@@ -79,7 +83,22 @@ export function NameLeadsPage() {
       </div>
       <Card>
         <CardHeader><CardTitle>搜索公开需求</CardTitle></CardHeader>
-        <CardContent className="flex flex-col sm:flex-row gap-3">
+        <CardContent className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-4 text-sm">
+            {([
+              ["reddit", "Reddit"],
+              ["forums", "Quora / 其他论坛"],
+              ["tiktok", "TikTok"],
+              ["instagram", "Instagram"],
+              ["facebook", "Facebook"],
+            ] as const).map(([key, label]) => (
+              <label key={key} className="flex items-center gap-2">
+                <input type="checkbox" checked={platforms[key]} onChange={(e) => setPlatforms((old) => ({ ...old, [key]: e.target.checked }))} />
+                {label}
+              </label>
+            ))}
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1">
             <label className="text-sm text-muted-foreground">目标国家代码（可留空）</label>
             <Input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="us / gb / ca / au" />
