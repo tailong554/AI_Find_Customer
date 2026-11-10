@@ -66,6 +66,21 @@ function LeadCard({ lead, onStatus }: { lead: NameIntentLead; onStatus: (id: str
             </Button>
           </div>
         )}
+        <div className="rounded-lg border p-3 space-y-2">
+          <div className="font-semibold text-sm">邮件联系（仅限用户主动同意）</div>
+          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="用户主动提供的邮箱地址" />
+          <label className="flex items-start gap-2 text-xs text-muted-foreground">
+            <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+            已核实用户明确同意接收中文起名服务邮件，并已记录同意证据。
+          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="outline" disabled={!email || !consent} onClick={saveConsent}>保存邮箱与同意记录</Button>
+            <Button size="sm" disabled={!consentSaved} onClick={startFollowup}>发送首封邮件</Button>
+            {followupStatus && <Badge variant="outline">{followupStatus}</Badge>}
+          </div>
+          {emailError && <p className="text-xs text-destructive">{emailError}</p>}
+          <p className="text-xs text-muted-foreground">保存同意不会自动发送。发送首封邮件前会检查 SMTP 测试状态；后续按设置执行，收到回复或退订后停止。</p>
+        </div>
         <div className="flex flex-wrap gap-2">
           {statusOptions.map((status) => (
             <Button key={status} size="sm" variant={lead.status === status ? "default" : "outline"} onClick={() => onStatus(lead.id, status)}>
@@ -106,7 +121,6 @@ export function NameLeadsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["name-leads"] }),
   });
   const leads = leadsQuery.data?.leads ?? [];
-  const direct = leads.filter((x) => x.intent_type === "direct_request").length;
   return (
     <div className="space-y-6">
       <div>
