@@ -224,6 +224,13 @@ class LLMTool:
             "temperature": temp,
             "max_tokens": tokens,
         }
+        # Agnes exposes an OpenAI-compatible gateway. Pass its credentials and
+        # base URL per request so this does not overwrite another OpenAI provider.
+        if self.model.startswith("openai/agnes-"):
+            if not self._settings.agnes_api_key.strip():
+                raise RuntimeError("AGNES_API_KEY is required when using an Agnes model.")
+            kwargs["api_key"] = self._settings.agnes_api_key.strip()
+            kwargs["api_base"] = self._settings.agnes_api_base.strip().rstrip("/")
         if response_format:
             if self._supports_response_format():
                 kwargs["response_format"] = response_format
