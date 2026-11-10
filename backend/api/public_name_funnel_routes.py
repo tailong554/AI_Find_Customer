@@ -13,7 +13,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from api.name_lead_email_routes import _init_tables as _init_email_tables
-from api.name_lead_routes import _candidate_id, _now
+from api.name_lead_routes import _now
 from config.settings import _resolve_file, get_settings
 from emailing.smtp_client import send_smtp_email
 
@@ -188,7 +188,7 @@ async def verify_public_name_request(token: str):
                     str(consent["preferred_style"] or "Customer submitted a Chinese-name request."),
                     str(consent["source"]).title(), "website", "Public website double opt-in",
                     "Email ownership and consent verified by double opt-in.",
-                    "", "email_consented", now.isoformat(), now.isoformat(),
+                    "", "", "email_consented", now.isoformat(), now.isoformat(),
                 ),
             )
         else:
