@@ -31,7 +31,7 @@ jobs:
       - name: Compile application modules
         run: python -m compileall -q api social_sources
       - name: Run Chinese-name lead tests
-        run: pytest -q tests/test_api/test_name_lead_routes.py
+        run: pytest -q tests/test_api/test_name_lead_routes.py tests/test_api/test_public_name_funnel_routes.py
 
   frontend:
     runs-on: ubuntu-latest
