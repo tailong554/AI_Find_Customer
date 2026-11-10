@@ -31,6 +31,8 @@ class SettingsPayload(BaseModel):
     zai_api_key: str = ""
     moonshot_api_key: str = ""
     minimax_api_key: str = ""
+    agnes_api_key: str = ""
+    agnes_api_base: str = "https://apihub.agnes-ai.com/v1"
     email_openai_api_key: str = ""
     email_anthropic_api_key: str = ""
     email_openrouter_api_key: str = ""
@@ -96,6 +98,11 @@ class SettingsPayload(BaseModel):
     automation_alert_failed_messages_threshold: str = ""
     search_concurrency: str = ""
     scrape_concurrency: str = ""
+    name_lead_auto_search_enabled: str = ""
+    name_lead_search_interval_hours: str = ""
+    name_lead_country_code: str = ""
+    name_lead_max_results_per_query: str = ""
+    name_lead_max_candidates: str = ""
 
 
 class SettingsResponse(BaseModel):
@@ -181,6 +188,8 @@ async def save_settings(payload: SettingsPayload):
         "zai_api_key": "ZAI_API_KEY",
         "moonshot_api_key": "MOONSHOT_API_KEY",
         "minimax_api_key": "MINIMAX_API_KEY",
+        "agnes_api_key": "AGNES_API_KEY",
+        "agnes_api_base": "AGNES_API_BASE",
         "email_openai_api_key": "EMAIL_OPENAI_API_KEY",
         "email_anthropic_api_key": "EMAIL_ANTHROPIC_API_KEY",
         "email_openrouter_api_key": "EMAIL_OPENROUTER_API_KEY",
@@ -246,6 +255,11 @@ async def save_settings(payload: SettingsPayload):
         "automation_alert_failed_messages_threshold": "AUTOMATION_ALERT_FAILED_MESSAGES_THRESHOLD",
         "search_concurrency": "SEARCH_CONCURRENCY",
         "scrape_concurrency": "SCRAPE_CONCURRENCY",
+        "name_lead_auto_search_enabled": "NAME_LEAD_AUTO_SEARCH_ENABLED",
+        "name_lead_search_interval_hours": "NAME_LEAD_SEARCH_INTERVAL_HOURS",
+        "name_lead_country_code": "NAME_LEAD_COUNTRY_CODE",
+        "name_lead_max_results_per_query": "NAME_LEAD_MAX_RESULTS_PER_QUERY",
+        "name_lead_max_candidates": "NAME_LEAD_MAX_CANDIDATES",
     }
 
     updates: dict[str, str] = {}
