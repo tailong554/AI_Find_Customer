@@ -109,6 +109,14 @@ const PROVIDERS: Provider[] = [
     reasoningModels: ["openai/moonshot-v1-128k", "openai/kimi-k1-5"],
   },
   {
+    id: "agnes",
+    label: "Agnes AI",
+    apiKeyField: "agnes_api_key",
+    apiKeyPlaceholder: "Agnes API Key",
+    defaultModels: ["openai/agnes-2.5-flash", "openai/agnes-2.5-pro", "openai/agnes-3.0-flash"],
+    reasoningModels: ["openai/agnes-2.5-pro", "openai/agnes-3.0-flash"],
+  },
+  {
     id: "minimax",
     label: "MiniMax",
     apiKeyField: "minimax_api_key",
@@ -126,6 +134,7 @@ const MAIN_API_KEY_FIELDS: Record<string, string> = {
   glm: "zai_api_key",
   kimi: "moonshot_api_key",
   minimax: "minimax_api_key",
+  agnes: "agnes_api_key",
 };
 
 const EMAIL_API_KEY_FIELDS: Record<string, string> = {
@@ -148,6 +157,7 @@ function detectProvider(model: string): string {
   if (model.startsWith("openai/glm") || model.startsWith("openai/glm")) return "glm";
   if (model.startsWith("openai/moonshot") || model.startsWith("openai/kimi")) return "kimi";
   if (model.startsWith("openai/MiniMax")) return "minimax";
+  if (model.startsWith("openai/agnes-")) return "agnes";
   return "openai";
 }
 
@@ -1154,6 +1164,8 @@ export function SettingsPage() {
         EMAIL_LLM_MODEL: "email_llm_model",
         EMAIL_REASONING_MODEL: "email_reasoning_model",
         OPENAI_API_KEY: "openai_api_key",
+        AGNES_API_KEY: "agnes_api_key",
+        AGNES_API_BASE: "agnes_api_base",
         ANTHROPIC_API_KEY: "anthropic_api_key",
         OPENROUTER_API_KEY: "openrouter_api_key",
         GROQ_API_KEY: "groq_api_key",
@@ -1269,6 +1281,8 @@ export function SettingsPage() {
         reasoningModelKey="reasoning_model"
         apiKeyFieldMap={MAIN_API_KEY_FIELDS}
       />
+
+      <FieldGroup title="Agnes AI API 地址" icon={<Cpu className="h-5 w-5 text-primary" />} description="请从 Agnes 开发者控制台复制官方 API Base URL；不要填写官网首页地址。" fields={[{ key: "agnes_api_base", label: "API Base URL", placeholder: "从 Agnes API 文档复制，例如 https://.../v1" }]} values={values} onChange={handleChange} />
 
       <LLMProviderPanel
         title="邮件模型配置"
