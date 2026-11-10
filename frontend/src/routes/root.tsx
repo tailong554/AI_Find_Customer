@@ -1,5 +1,5 @@
 import { Link, Outlet } from "@tanstack/react-router";
-import { Crosshair, LayoutDashboard, Plus, Settings } from "lucide-react";
+import { Crosshair, LayoutDashboard, Plus, Settings, UserRoundSearch } from "lucide-react";
 
 export function RootLayout() {
   return (
@@ -17,6 +17,13 @@ export function RootLayout() {
             >
               <LayoutDashboard className="h-4 w-4" />
               任务看板
+            </Link>
+            <Link
+              to="/name-leads"
+              className="flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground [&.active]:text-foreground"
+            >
+              <UserRoundSearch className="h-4 w-4" />
+              中文起名潜客
             </Link>
             <Link
               to="/hunts/new"
