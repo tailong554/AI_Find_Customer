@@ -83,6 +83,7 @@ export function NameLeadsPage() {
   const [filter, setFilter] = useState("");
   const [platformFilter, setPlatformFilter] = useState("");
   const dashboard = useQuery({ queryKey: ["name-lead-dashboard"], queryFn: api.getNameLeadDashboard, refetchInterval: 15000 });
+  const revenue = useQuery({ queryKey: ["name-lead-revenue"], queryFn: api.getNameLeadRevenue, refetchInterval: 30000 });
   const [platforms, setPlatforms] = useState({ reddit: true, forums: true, tiktok: true, instagram: true, facebook: true });
   const queryClient = useQueryClient();
   const leadsQuery = useQuery({ queryKey: ["name-leads", filter, minimumScore, platformFilter], queryFn: () => api.listNameLeads(filter, minimumScore, platformFilter) });
@@ -120,6 +121,19 @@ export function NameLeadsPage() {
         ].map(([label, value]) => <Card key={label}><CardContent className="p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="text-2xl font-bold">{value}</p></CardContent></Card>)}
       </div>
       <Card>
+        <CardHeader><CardTitle>平台订单与收入</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div><p className="text-xs text-muted-foreground">已归因订单</p><p className="text-2xl font-bold">{revenue.data?.total_orders ?? 0}</p></div>
+            <div><p className="text-xs text-muted-foreground">收入（不同币种请分开看）</p><p className="text-2xl font-bold">{(revenue.data?.total_revenue ?? 0).toFixed(2)}</p></div>
+          </div>
+          <div className="space-y-2 text-sm">
+            {(revenue.data?.platforms ?? []).map((item) => <div key={item.source + item.currency} className="flex justify-between border-b pb-2"><span>{item.source} · {item.currency}</span><strong>{item.orders} 单 · {Number(item.revenue).toFixed(2)}</strong></div>)}
+          </div>
+          <p className="text-xs text-muted-foreground">订单数据需要支付平台向 /api/v1/public/orders 回传成功付款事件。未配置 webhook 时不会自动出现订单。</p>
+        </CardContent>
+      </Card>
+      <Card>
         <CardHeader><CardTitle>获客漏斗与平台分布</CardTitle></CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2 text-sm">
@@ -130,6 +144,7 @@ export function NameLeadsPage() {
           </div>
         </CardContent>
       </Card>
+      {dashboard.data?.social_capabilities && <Card><CardHeader><CardTitle>社交平台数据接入状态</CardTitle></CardHeader><CardContent className="grid gap-3 md:grid-cols-3">{Object.entries(dashboard.data.social_capabilities).map(([platform, value]: [string, any]) => <div key={platform} className="rounded-lg border p-3"><strong>{platform}</strong><p className="text-xs text-muted-foreground mt-1">{value.mode}</p><p className="text-xs mt-2">{value.message || value.capability}</p><p className="text-xs mt-1">{value.configured ? "已配置" : "待授权/配置"}</p></div>)}</CardContent></Card>}
       {dashboard.data?.active_run && <Card><CardContent className="p-4 text-sm"><strong>搜索任务运行中</strong><p className="text-muted-foreground mt-1">已完成 {dashboard.data.active_run.queries_completed}/{dashboard.data.active_run.queries_total} 个搜索词，已分析 {dashboard.data.active_run.raw_result_count} 条结果。</p></CardContent></Card>}
       <Card>
         <CardHeader><CardTitle>搜索公开需求</CardTitle></CardHeader>
