@@ -105,6 +105,11 @@ class SettingsPayload(BaseModel):
     name_lead_country_code: str = ""
     name_lead_max_results_per_query: str = ""
     name_lead_max_candidates: str = ""
+    name_lead_email_auto_followup_enabled: str = ""
+    name_lead_email_reply_detection_enabled: str = ""
+    name_lead_email_reply_check_interval_minutes: str = ""
+    name_lead_email_first_followup_days: str = ""
+    name_lead_email_second_followup_days: str = ""
 
 
 class SettingsResponse(BaseModel):
@@ -264,6 +269,11 @@ async def save_settings(payload: SettingsPayload):
         "name_lead_country_code": "NAME_LEAD_COUNTRY_CODE",
         "name_lead_max_results_per_query": "NAME_LEAD_MAX_RESULTS_PER_QUERY",
         "name_lead_max_candidates": "NAME_LEAD_MAX_CANDIDATES",
+        "name_lead_email_auto_followup_enabled": "NAME_LEAD_EMAIL_AUTO_FOLLOWUP_ENABLED",
+        "name_lead_email_reply_detection_enabled": "NAME_LEAD_EMAIL_REPLY_DETECTION_ENABLED",
+        "name_lead_email_reply_check_interval_minutes": "NAME_LEAD_EMAIL_REPLY_CHECK_INTERVAL_MINUTES",
+        "name_lead_email_first_followup_days": "NAME_LEAD_EMAIL_FIRST_FOLLOWUP_DAYS",
+        "name_lead_email_second_followup_days": "NAME_LEAD_EMAIL_SECOND_FOLLOWUP_DAYS",
     }
 
     updates: dict[str, str] = {}
