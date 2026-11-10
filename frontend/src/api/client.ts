@@ -565,7 +565,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  searchNameLeads: (data: { country_code: string; max_results_per_query: number; max_candidates: number; include_reddit: boolean; include_other_forums: boolean }) =>
+  searchNameLeads: (data: { country_code: string; max_results_per_query: number; max_candidates: number; include_reddit: boolean; include_other_forums: boolean; include_tiktok: boolean; include_instagram: boolean; include_facebook: boolean }) =>
     request<{ provider: string; candidate_count: number; direct_requests: number; high_intent_count: number; leads: NameIntentLead[]; notice: string }>("/name-leads/search", {
       method: "POST",
       body: JSON.stringify(data),
