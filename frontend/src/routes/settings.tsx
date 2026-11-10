@@ -1214,6 +1214,11 @@ export function SettingsPage() {
         AUTOMATION_ALERT_FAILED_MESSAGES_THRESHOLD: "automation_alert_failed_messages_threshold",
         SEARCH_CONCURRENCY: "search_concurrency",
         SCRAPE_CONCURRENCY: "scrape_concurrency",
+        NAME_LEAD_AUTO_SEARCH_ENABLED: "name_lead_auto_search_enabled",
+        NAME_LEAD_SEARCH_INTERVAL_HOURS: "name_lead_search_interval_hours",
+        NAME_LEAD_COUNTRY_CODE: "name_lead_country_code",
+        NAME_LEAD_MAX_RESULTS_PER_QUERY: "name_lead_max_results_per_query",
+        NAME_LEAD_MAX_CANDIDATES: "name_lead_max_candidates",
       };
       for (const [envKey, fieldKey] of Object.entries(keyMap)) {
         if (data.settings[envKey] !== undefined) {
@@ -1293,6 +1298,8 @@ export function SettingsPage() {
         reasoningModelKey="email_reasoning_model"
         apiKeyFieldMap={EMAIL_API_KEY_FIELDS}
       />
+
+      <FieldGroup title="中文起名潜客自动搜索" icon={<Search className="h-5 w-5 text-primary" />} description="定时搜索公开帖子。默认关闭；建议先手动测试搜索结果，再开启每 6 小时一次。" fields={[{key:"name_lead_auto_search_enabled",label:"自动搜索（true / false）",placeholder:"false"},{key:"name_lead_search_interval_hours",label:"搜索间隔（小时）",placeholder:"6"},{key:"name_lead_country_code",label:"国家代码",placeholder:"us"},{key:"name_lead_max_results_per_query",label:"每个关键词结果数",placeholder:"6"},{key:"name_lead_max_candidates",label:"每轮候选上限",placeholder:"40"}]} values={values} onChange={handleChange} />
 
       {/* Search */}
       <FieldGroup
