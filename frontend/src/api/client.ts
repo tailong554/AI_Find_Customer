@@ -571,8 +571,10 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  listNameLeads: (status = "", minScore = 0) =>
-    request<{ leads: NameIntentLead[]; count: number }>(`/name-leads?min_score=${minScore}${status ? `&status=${encodeURIComponent(status)}` : ""}`),
+  getNameLeadDashboard: () =>
+    request<any>("/name-leads/dashboard"),
+  listNameLeads: (status = "", minScore = 0, platform = "", intentType = "") =>
+    request<{ leads: NameIntentLead[]; count: number }>(`/name-leads?min_score=${minScore}${status ? `&status=${encodeURIComponent(status)}` : ""}${platform ? `&platform=${encodeURIComponent(platform)}` : ""}${intentType ? `&intent_type=${encodeURIComponent(intentType)}` : ""}`),
 
   updateNameLeadStatus: (leadId: string, status: string) =>
     request<{ lead: NameIntentLead }>(`/name-leads/${leadId}/status`, {
