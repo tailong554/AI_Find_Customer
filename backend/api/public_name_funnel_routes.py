@@ -9,7 +9,7 @@ import sqlite3
 from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 
-from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from api.name_lead_email_routes import _init_tables as _init_email_tables
@@ -92,7 +92,7 @@ def _rate_limit(email_hash: str) -> None:
 
 
 @router.post("/public/name-request")
-async def submit_public_name_request(request: PublicNameRequest, http_request: Request):
+async def submit_public_name_request(request: PublicNameRequest):
     if not request.consent:
         raise HTTPException(status_code=403, detail="Consent is required.")
     email = request.email.strip().lower()
