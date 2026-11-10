@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 export function PublicNameRequestPage() {
   const params = new URLSearchParams(window.location.search);
   const referral = params.get("ref") || "";
+  const source = params.get("source") || params.get("utm_source") || "website";
   const [email, setEmail] = useState("");
   const [style, setStyle] = useState("");
   const [consent, setConsent] = useState(false);
@@ -24,7 +25,7 @@ export function PublicNameRequestPage() {
     mutationFn: () => api.submitPublicNameRequest({
       email,
       consent,
-      source: "website",
+      source,
       referral_code: referral,
       preferred_style: style,
     }),
