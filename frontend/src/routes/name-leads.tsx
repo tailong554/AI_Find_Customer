@@ -13,6 +13,23 @@ const statusLabels: Record<string, string> = {
 const statusOptions = ["new", "reviewed", "replied", "converted", "dismissed"];
 
 function LeadCard({ lead, onStatus }: { lead: NameIntentLead; onStatus: (id: string, status: string) => void }) {
+  const [email, setEmail] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [consentSaved, setConsentSaved] = useState(false);
+  const [followupStatus, setFollowupStatus] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const saveConsent = async () => {
+    try {
+      setEmailError("");
+      await api.recordNameLeadConsent(lead.id, { email, consent_confirmed: consent, consent_source: lead.url, consent_evidence: "User voluntarily provided this email and explicitly checked the consent box in the lead management workflow." });
+      setConsentSaved(true);
+      setFollowupStatus("consented");
+    } catch (error) { setEmailError((error as Error).message); }
+  };
+  const startFollowup = async () => {
+    try { const result = await api.startNameLeadFollowup(lead.id); setFollowupStatus(String(result.followup.status || "active")); setEmailError(""); }
+    catch (error) { setEmailError((error as Error).message); }
+  };
   return (
     <Card>
       <CardContent className="p-5 space-y-3">
