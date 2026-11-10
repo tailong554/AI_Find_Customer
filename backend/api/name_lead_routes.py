@@ -75,6 +75,9 @@ class NameLeadSearchRequest(BaseModel):
     max_candidates: int = Field(default=40, ge=1, le=80)
     include_reddit: bool = True
     include_other_forums: bool = True
+    include_tiktok: bool = True
+    include_instagram: bool = True
+    include_facebook: bool = True
 
 
 class NameLeadStatusRequest(BaseModel):
@@ -158,6 +161,12 @@ def _platform_for(url: str) -> tuple[str, str]:
     host = urlparse(url).netloc.lower().removeprefix("www.")
     if host.endswith("reddit.com"):
         return "Reddit", host
+    if host.endswith("tiktok.com"):
+        return "TikTok", host
+    if host.endswith("instagram.com"):
+        return "Instagram", host
+    if host.endswith("facebook.com"):
+        return "Facebook", host
     if host.endswith("quora.com"):
         return "Quora", host
     if "stackexchange.com" in host or host.endswith("stackoverflow.com"):
@@ -301,6 +310,24 @@ def _build_queries(request: NameLeadSearchRequest) -> list[str]:
         queries.extend(SEARCH_QUERIES[:5])
     if request.include_other_forums:
         queries.extend(SEARCH_QUERIES[5:])
+    if request.include_tiktok:
+        queries.extend([
+            'site:tiktok.com "I want a Chinese name"',
+            'site:tiktok.com "need a Chinese name" OR "Chinese name for me"',
+            'site:tiktok.com "help me choose a Chinese name"',
+        ])
+    if request.include_instagram:
+        queries.extend([
+            'site:instagram.com/p/ "I want a Chinese name"',
+            'site:instagram.com/reel/ "Chinese name for me"',
+            'site:instagram.com "help me choose a Chinese name"',
+        ])
+    if request.include_facebook:
+        queries.extend([
+            'site:facebook.com/groups/ "I need a Chinese name"',
+            'site:facebook.com "looking for a Chinese name"',
+            'site:facebook.com "help me choose a Chinese name"',
+        ])
     if not queries:
         queries = SEARCH_QUERIES[:5]
     return queries
