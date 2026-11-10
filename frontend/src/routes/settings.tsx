@@ -1219,6 +1219,11 @@ export function SettingsPage() {
         NAME_LEAD_COUNTRY_CODE: "name_lead_country_code",
         NAME_LEAD_MAX_RESULTS_PER_QUERY: "name_lead_max_results_per_query",
         NAME_LEAD_MAX_CANDIDATES: "name_lead_max_candidates",
+        NAME_LEAD_EMAIL_AUTO_FOLLOWUP_ENABLED: "name_lead_email_auto_followup_enabled",
+        NAME_LEAD_EMAIL_REPLY_DETECTION_ENABLED: "name_lead_email_reply_detection_enabled",
+        NAME_LEAD_EMAIL_REPLY_CHECK_INTERVAL_MINUTES: "name_lead_email_reply_check_interval_minutes",
+        NAME_LEAD_EMAIL_FIRST_FOLLOWUP_DAYS: "name_lead_email_first_followup_days",
+        NAME_LEAD_EMAIL_SECOND_FOLLOWUP_DAYS: "name_lead_email_second_followup_days",
       };
       for (const [envKey, fieldKey] of Object.entries(keyMap)) {
         if (data.settings[envKey] !== undefined) {
@@ -1300,6 +1305,8 @@ export function SettingsPage() {
       />
 
       <FieldGroup title="中文起名潜客自动搜索" icon={<Search className="h-5 w-5 text-primary" />} description="定时搜索公开帖子。默认关闭；建议先手动测试搜索结果，再开启每 6 小时一次。" fields={[{key:"name_lead_auto_search_enabled",label:"自动搜索（true / false）",placeholder:"false"},{key:"name_lead_search_interval_hours",label:"搜索间隔（小时）",placeholder:"6"},{key:"name_lead_country_code",label:"国家代码",placeholder:"us"},{key:"name_lead_max_results_per_query",label:"每个关键词结果数",placeholder:"6"},{key:"name_lead_max_candidates",label:"每轮候选上限",placeholder:"40"}]} values={values} onChange={handleChange} />
+
+      <FieldGroup title="中文起名邮件跟进" icon={<Mail className="h-5 w-5 text-primary" />} description="仅对已明确同意并由你启动首封邮件的用户生效。请先在 SMTP/IMAP 面板测试连接。" fields={[{key:"name_lead_email_auto_followup_enabled",label:"自动发送后续邮件（true / false）",placeholder:"false"},{key:"name_lead_email_reply_detection_enabled",label:"自动检测回信（true / false）",placeholder:"false"},{key:"name_lead_email_reply_check_interval_minutes",label:"回信检测间隔（分钟）",placeholder:"15"},{key:"name_lead_email_first_followup_days",label:"首封后第2封间隔（天）",placeholder:"3"},{key:"name_lead_email_second_followup_days",label:"第2封后第3封间隔（天）",placeholder:"4"}]} values={values} onChange={handleChange} />
 
       {/* Search */}
       <FieldGroup
