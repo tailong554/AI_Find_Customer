@@ -59,6 +59,27 @@ async def test_public_double_opt_in_creates_consent_and_email_followup(tmp_path,
     assert lead == ("email_consented", "Instagram")
     assert followup == ("buyer@example.com", 1, "consented", 0)
 
+    # Simulate a trusted payment-provider webhook after a successful checkout.
+    order = await public_routes.record_public_order(
+        public_routes.PublicOrderEvent(
+            order_id="test-order-001",
+            email="buyer@example.com",
+            amount=19.90,
+            currency="USD",
+            product="Chinese Name Starter",
+        ),
+        x_order_webhook_secret="test-secret",
+    )
+    assert order["status"] == "recorded"
+    assert order["source"] == "instagram"
+
+    with sqlite3.connect(db_path) as conn:
+        saved_order = conn.execute(
+            "SELECT source, amount, currency FROM name_lead_orders WHERE order_id=?",
+            ("test-order-001",),
+        ).fetchone()
+    assert saved_order == ("instagram", 19.9, "USD")
+
 
 @pytest.mark.asyncio
 async def test_public_name_request_requires_explicit_consent():
@@ -69,4 +90,25 @@ async def test_public_name_request_requires_explicit_consent():
                 consent=False,
                 source="website",
             )
+        )
+
+
+@pytest.mark.asyncio
+async def test_order_webhook_rejects_invalid_secret(tmp_path, monkeypatch):
+    db_path = tmp_path / "name_leads.sqlite3"
+    monkeypatch.setattr(public_routes, "_resolve_file", lambda _name: str(db_path))
+    monkeypatch.setattr(
+        public_routes,
+        "get_settings",
+        lambda: SimpleNamespace(name_lead_order_webhook_secret="correct-secret"),
+    )
+    with pytest.raises(Exception):
+        await public_routes.record_public_order(
+            public_routes.PublicOrderEvent(
+                order_id="test-order-002",
+                email="buyer@example.com",
+                amount=19.90,
+                currency="USD",
+            ),
+            x_order_webhook_secret="wrong-secret",
         )
