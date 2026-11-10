@@ -15,6 +15,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.automation_routes import router as automation_router
+from api.name_lead_routes import router as name_lead_router
 from api.hunt_store import load_all_hunts
 from api.email_routes import (
     CreateCampaignRequest,
@@ -739,6 +740,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(router, prefix="/api/v1")
+    app.include_router(name_lead_router, prefix="/api/v1")
     app.include_router(automation_router)
     app.include_router(email_router)
     app.include_router(sse_router, prefix="/api/v1")
