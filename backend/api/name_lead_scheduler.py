@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import datetime, timezone
 
 from api.name_lead_routes import NameLeadSearchRequest, search_name_leads
 from config.settings import get_settings
@@ -12,12 +13,15 @@ logger = logging.getLogger(__name__)
 
 
 async def name_lead_scheduler_loop() -> None:
-    """Run a bounded public-post search at the configured interval."""
+    """Poll settings frequently; run a bounded search immediately and then on schedule."""
+    last_run_at: datetime | None = None
     while True:
         settings = get_settings()
         enabled = bool(settings.name_lead_auto_search_enabled)
         interval_hours = max(1, min(168, int(settings.name_lead_search_interval_hours or 6)))
-        if enabled:
+        now = datetime.now(timezone.utc)
+        due = last_run_at is None or (now - last_run_at).total_seconds() >= interval_hours * 3600
+        if enabled and due:
             try:
                 result = await search_name_leads(
                     NameLeadSearchRequest(
@@ -26,8 +30,12 @@ async def name_lead_scheduler_loop() -> None:
                         max_candidates=max(1, min(80, int(settings.name_lead_max_candidates or 40))),
                         include_reddit=True,
                         include_other_forums=True,
+                        include_tiktok=True,
+                        include_instagram=True,
+                        include_facebook=True,
                     )
                 )
+                last_run_at = datetime.now(timezone.utc)
                 logger.info(
                     "[NameLeadScheduler] scanned=%s direct_requests=%s high_intent=%s",
                     result.get("candidate_count", 0),
@@ -38,4 +46,6 @@ async def name_lead_scheduler_loop() -> None:
                 raise
             except Exception:
                 logger.exception("[NameLeadScheduler] scheduled search failed")
-        await asyncio.sleep(interval_hours * 3600)
+                # Avoid a tight retry loop if a search provider is temporarily down.
+                last_run_at = datetime.now(timezone.utc)
+        await asyncio.sleep(60)
