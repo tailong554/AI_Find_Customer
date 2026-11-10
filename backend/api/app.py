@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.automation_routes import router as automation_router
 from api.name_lead_routes import router as name_lead_router
+from api.name_lead_scheduler import name_lead_scheduler_loop
 from api.hunt_store import load_all_hunts
 from api.email_routes import (
     CreateCampaignRequest,
@@ -658,6 +659,7 @@ async def lifespan(app: FastAPI):
     app.state.automation_notify_task = None
     app.state.automation_consumer_task = None
     app.state.template_seed_task = None
+    app.state.name_lead_scheduler_task = None
     queue = HuntJobQueue(settings.automation_queue_db_path)
     queue.init_db()
     recovered_jobs = queue.recover_interrupted_running_jobs(updated_at=_now_iso())
@@ -675,6 +677,8 @@ async def lifespan(app: FastAPI):
     app.state.automation_notify_task = asyncio.create_task(_automation_notify_loop())
     logger.info("[AutomationNotify] background loop started")
     app.state.template_seed_task = asyncio.create_task(_template_seed_prewarm_loop())
+    app.state.name_lead_scheduler_task = asyncio.create_task(name_lead_scheduler_loop())
+    logger.info("[NameLeadScheduler] background loop started")
     logger.info("[TemplateSeedWorker] background loop started")
     app.state.automation_consumer_task = asyncio.create_task(_automation_consumer_loop())
     logger.info("[AutomationConsumer] background loop started")
@@ -697,6 +701,11 @@ async def lifespan(app: FastAPI):
             with suppress(asyncio.CancelledError):
                 await reply_task
             logger.info("[EmailReply] background loop stopped")
+        name_lead_task = getattr(app.state, "name_lead_scheduler_task", None)
+        if name_lead_task:
+            name_lead_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await name_lead_task
         template_seed_task = getattr(app.state, "template_seed_task", None)
         if template_seed_task:
             template_seed_task.cancel()
