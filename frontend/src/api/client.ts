@@ -575,6 +575,13 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  submitPublicNameRequest: (data: { email: string; consent: boolean; source: string; referral_code: string; preferred_style: string }) =>
+    request<{ status: string; message: string }>("/public/name-request", { method: "POST", body: JSON.stringify(data) }),
+  verifyPublicNameRequest: (token: string) =>
+    request<{ status: string; message: string }>(`/public/name-request/verify?token=${encodeURIComponent(token)}`),
+  getNameLeadRevenue: () =>
+    request<{ platforms: Array<{source: string; currency: string; orders: number; revenue: number; customers: number}>; total_orders: number; total_revenue: number; note: string }>("/name-leads/revenue"),
+
   getNameLeadDashboard: () =>
     request<any>("/name-leads/dashboard"),
   listNameLeads: (status = "", minScore = 0, platform = "", intentType = "") =>
