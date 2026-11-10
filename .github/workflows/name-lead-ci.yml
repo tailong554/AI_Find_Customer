@@ -47,5 +47,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Install frontend dependencies
         run: npm ci
+      - name: Install Rollup Linux native optional package
+        run: npm install --no-save --package-lock=false @rollup/rollup-linux-x64-gnu@4.57.1
       - name: TypeScript check and production build
         run: npm run build
