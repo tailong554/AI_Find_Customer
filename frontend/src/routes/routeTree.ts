@@ -1,4 +1,4 @@
-import { createRootRoute, createRoute, Navigate } from "@tanstack/react-router";
+import { createRootRoute, createRoute } from "@tanstack/react-router";
 import { RootLayout } from "./root";
 import { NameLeadsPage } from "./name-leads";
 import { PublicNameRequestPage } from "./public-name-request";
