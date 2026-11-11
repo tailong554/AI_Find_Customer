@@ -88,6 +88,12 @@ export function NameLeadsPage() {
     }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["name-leads"] }); queryClient.invalidateQueries({ queryKey: ["name-lead-dashboard"] }); },
   });
+  const searchRun = useQuery({
+    queryKey: ["name-lead-search-run", search.data?.run_id],
+    queryFn: () => api.getNameLeadSearchRun(search.data!.run_id),
+    enabled: Boolean(search.data?.run_id),
+    refetchInterval: (query) => ["completed", "failed"].includes(String(query.state.data?.status || "")) ? false : 2000,
+  });
   const update = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) => api.updateNameLeadStatus(id, status),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["name-leads"] }),
@@ -167,10 +173,11 @@ export function NameLeadsPage() {
       {search.isError && <p className="text-sm text-destructive">{(search.error as Error).message}</p>}
       {search.data && (
         <Card><CardContent className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div><div className="text-muted-foreground">搜索来源</div><strong>{search.data.provider}</strong></div>
-          <div><div className="text-muted-foreground">候选帖子</div><strong>{search.data.candidate_count}</strong></div>
-          <div><div className="text-muted-foreground">明确提出需求</div><strong>{search.data.direct_requests}</strong></div>
-          <div><div className="text-muted-foreground">高意向线索</div><strong>{search.data.high_intent_count}</strong></div>
+          <div><div className="text-muted-foreground">任务状态</div><strong>{searchRun.data?.status || search.data.status}</strong></div>
+          <div><div className="text-muted-foreground">已完成查询</div><strong>{searchRun.data?.queries_completed ?? 0}/{searchRun.data?.queries_total ?? 0}</strong></div>
+          <div><div className="text-muted-foreground">有效候选</div><strong>{searchRun.data?.candidate_count ?? 0}</strong></div>
+          <div><div className="text-muted-foreground">明确起名需求</div><strong>{searchRun.data?.direct_requests ?? 0}</strong></div>
+          {searchRun.data?.error_summary && <p className="col-span-full text-destructive">{searchRun.data.error_summary}</p>}
         </CardContent></Card>
       )}
       <div className="flex flex-wrap items-center gap-3">
