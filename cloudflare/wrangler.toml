@@ -1,0 +1,32 @@
+name = "chinese-name-lead-hunter"
+main = "src/index.ts"
+compatibility_date = "2026-11-12"
+
+[assets]
+directory = "../frontend/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+[triggers]
+crons = ["0 */6 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "chinese-name-leads"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[[queues.producers]]
+binding = "SEARCH_QUEUE"
+queue = "chinese-name-search"
+
+[[queues.consumers]]
+queue = "chinese-name-search"
+max_batch_size = 1
+max_batch_timeout = 1
+max_retries = 3
+dead_letter_queue = "chinese-name-search-dlq"
+
+[vars]
+AUTO_FOLLOWUP_ENABLED = "false"
