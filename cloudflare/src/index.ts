@@ -301,7 +301,7 @@ export default {
     return env.ASSETS.fetch(req);
   },
   async scheduled(event:ScheduledController,env:Env,ctx:ExecutionContext) {
-    if(event.cron==="0 */6 * * *") {
+    if(event.cron==="0 */6 * * *" && env.SERPER_API_KEY) {
       const id=crypto.randomUUID();await env.DB.prepare("INSERT INTO search_runs (id,status,provider,queries_total,started_at) VALUES (?,'queued','Serper + Agnes AI',?,?)").bind(id,QUERIES.length,now()).run();
       ctx.waitUntil(env.SEARCH_QUEUE.send({runId:id,countryCode:env.SEARCH_COUNTRY_CODE||"us",limit:50}));
     }
