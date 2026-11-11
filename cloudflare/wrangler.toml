@@ -13,8 +13,8 @@ crons = ["0 */6 * * *", "*/15 * * * *"]
 
 [[d1_databases]]
 binding = "DB"
-database_name = "chinese-name-leads"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_name = "中文名称线索"
+database_id = "ba52bbcd-ded7-4c7c-a63b-3e1846e48973"
 migrations_dir = "migrations"
 
 [[queues.producers]]
