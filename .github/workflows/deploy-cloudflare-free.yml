@@ -2,6 +2,13 @@ name: Deploy AI Hunter to Cloudflare Free
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feature/chinese-name-lead-hunter
+    paths:
+      - ".github/workflows/deploy-cloudflare-free.yml"
+      - "cloudflare/**"
+      - "frontend/**"
 
 permissions:
   contents: read
@@ -40,6 +47,28 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         run: npm run build
+      - name: Upload optional runtime secrets
+        working-directory: cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
+          AGNES_API_KEY: ${{ secrets.AGNES_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+          REPLY_TO_EMAIL: ${{ secrets.REPLY_TO_EMAIL }}
+          PUBLIC_APP_BASE_URL: ${{ secrets.PUBLIC_APP_BASE_URL }}
+          ACCESS_TEAM_DOMAIN: ${{ secrets.ACCESS_TEAM_DOMAIN }}
+          ACCESS_AUD: ${{ secrets.ACCESS_AUD }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          ORDER_WEBHOOK_SECRET: ${{ secrets.ORDER_WEBHOOK_SECRET }}
+        run: |
+          for name in SERPER_API_KEY AGNES_API_KEY RESEND_API_KEY FROM_EMAIL REPLY_TO_EMAIL PUBLIC_APP_BASE_URL ACCESS_TEAM_DOMAIN ACCESS_AUD ADMIN_EMAIL ORDER_WEBHOOK_SECRET; do
+            value="$(printenv "$name" || true)"
+            if [ -n "$value" ]; then
+              printf '%s' "$value" | npx wrangler secret put "$name" --config wrangler.toml
+            fi
+          done
       - name: Apply D1 migrations
         working-directory: cloudflare
         env:
