@@ -45,4 +45,6 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      - name: Install Linux Rollup native binary
+        run: npm install --no-save --package-lock=false @rollup/rollup-linux-x64-gnu@4.57.1
       - run: npm run build
