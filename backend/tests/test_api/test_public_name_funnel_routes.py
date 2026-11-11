@@ -5,13 +5,15 @@ from types import SimpleNamespace
 import pytest
 
 from api import public_name_funnel_routes as public_routes
+from api import name_lead_routes as lead_routes
 
 
 @pytest.mark.asyncio
 async def test_public_double_opt_in_creates_consent_and_email_followup(tmp_path, monkeypatch):
     db_path = tmp_path / "name_leads.sqlite3"
     monkeypatch.setenv("NAME_LEAD_DB_PATH", str(db_path))
-    monkeypatch.setattr(public_routes, "_resolve_file", lambda _name: str(db_path))
+    monkeypatch.setattr(public_routes, "_database_path", lambda: db_path)
+    monkeypatch.setattr(lead_routes, "_database_path", lambda: db_path)
     monkeypatch.setattr(
         public_routes,
         "get_settings",
@@ -96,7 +98,8 @@ async def test_public_name_request_requires_explicit_consent():
 @pytest.mark.asyncio
 async def test_order_webhook_rejects_invalid_secret(tmp_path, monkeypatch):
     db_path = tmp_path / "name_leads.sqlite3"
-    monkeypatch.setattr(public_routes, "_resolve_file", lambda _name: str(db_path))
+    monkeypatch.setattr(public_routes, "_database_path", lambda: db_path)
+    monkeypatch.setattr(lead_routes, "_database_path", lambda: db_path)
     monkeypatch.setattr(
         public_routes,
         "get_settings",
