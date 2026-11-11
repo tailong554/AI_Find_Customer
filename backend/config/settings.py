@@ -109,6 +109,9 @@ class Settings(BaseSettings):
     moonshot_api_key: str = ""    # Kimi / Moonshot AI
     minimax_api_key: str = ""
     minimax_api_base: str = "https://api.minimax.io/v1"
+    # Agnes AI uses an OpenAI-compatible API gateway.
+    agnes_api_key: str = ""
+    agnes_api_base: str = "https://apihub.agnes-ai.com/v1"
     email_openai_api_key: str = ""
     email_anthropic_api_key: str = ""
     email_openrouter_api_key: str = ""
@@ -173,6 +176,25 @@ class Settings(BaseSettings):
     email_review_max_blocking_issues: int = 0
     email_validation_max_revisions: int = 2
     email_review_auto_fix_rounds: int = 2
+
+    # --- Chinese-name consumer lead discovery ---
+    name_lead_auto_search_enabled: bool = False
+    name_lead_search_interval_hours: int = 6
+    name_lead_country_code: str = "us"
+    name_lead_max_results_per_query: int = 6
+    name_lead_max_candidates: int = 40
+    name_lead_email_auto_followup_enabled: bool = False
+    name_lead_email_reply_detection_enabled: bool = False
+    name_lead_email_reply_check_interval_minutes: int = 15
+    name_lead_email_first_followup_days: int = 3
+    name_lead_email_second_followup_days: int = 4
+    public_app_base_url: str = ""
+    name_lead_order_webhook_secret: str = ""
+    meta_graph_api_version: str = "v26.0"
+    meta_access_token: str = ""
+    meta_page_public_content_access_approved: bool = False
+    instagram_access_token: str = ""
+    instagram_business_account_id: str = ""
 
     # --- Langfuse (observability) ---
     langfuse_public_key: str = ""

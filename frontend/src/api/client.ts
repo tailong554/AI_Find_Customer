@@ -13,6 +13,17 @@ function withApiAuth(headers?: HeadersInit): HeadersInit {
 }
 const SETTINGS_API_BASE = "/api/settings";
 
+export interface NameIntentLead {
+  id: string; title: string; url: string; snippet: string; source_platform: string;
+  source_domain: string; search_query: string; intent_type: string; intent_score: number;
+  purchase_signal: string; reason: string; evidence_quote: string; reply_draft: string;
+  status: string; created_at: string; updated_at: string;
+  need_summary?: string; buying_signal_summary?: string;
+  need_clarity_score?: number; purchase_stage_score?: number; urgency_score?: number;
+  service_fit_score?: number; contactability_score?: number; score_explanation?: string;
+  first_seen_at?: string; last_seen_at?: string; search_count?: number;
+}
+
 export interface HuntRequest {
   website_url: string;
   description: string;
@@ -524,7 +535,7 @@ async function requestSettings<T>(path: string, options?: RequestInit): Promise<
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || res.statusText);
+    throw new Error(err.error || err.detail || res.statusText);
   }
   if (res.status === 204) {
     return undefined as T;
@@ -558,6 +569,41 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  searchNameLeads: (data: { country_code: string; max_results_per_query: number; max_candidates: number; include_reddit: boolean; include_other_forums: boolean; include_tiktok: boolean; include_instagram: boolean; include_facebook: boolean }) =>
+    request<{ run_id: string; status: string }>("/admin/name-leads/search", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  submitPublicNameRequest: (data: { email: string; consent: boolean; source: string; referral_code: string; preferred_style: string }) =>
+    request<{ status: string; message: string }>("/public/name-request", { method: "POST", body: JSON.stringify(data) }),
+  verifyPublicNameRequest: (token: string) =>
+    request<{ status: string; message: string }>(`/public/name-request/verify?token=${encodeURIComponent(token)}`),
+  getNameLeadSearchRun: (runId: string) =>
+    request<{ id: string; status: string; provider: string; queries_total: number; queries_completed: number; candidate_count: number; direct_requests: number; high_intent_count: number; error_summary?: string }>(`/admin/name-leads/search-runs/${encodeURIComponent(runId)}`),
+  getNameLeadRevenue: () =>
+    request<{ platforms: Array<{source: string; submitted: number; verified: number; orders: number; revenue_by_currency: Record<string, number>; customers: number; conversion_rate: number}>; total_orders: number; total_verified_consents: number; note: string }>("/admin/name-leads/revenue"),
+
+  getNameLeadDashboard: () =>
+    request<any>("/admin/name-leads/dashboard"),
+  listNameLeads: (status = "", minScore = 0, platform = "", intentType = "") =>
+    request<{ leads: NameIntentLead[]; count: number }>(`/admin/name-leads?min_score=${minScore}${status ? `&status=${encodeURIComponent(status)}` : ""}${platform ? `&platform=${encodeURIComponent(platform)}` : ""}${intentType ? `&intent_type=${encodeURIComponent(intentType)}` : ""}`),
+
+  updateNameLeadStatus: (leadId: string, status: string) =>
+    request<{ lead: NameIntentLead }>(`/admin/name-leads/${leadId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }),
+
+  recordNameLeadConsent: (leadId: string, data: { email: string; consent_confirmed: boolean; consent_source: string; consent_evidence: string }) =>
+    request<{ followup: Record<string, unknown> }>(`/admin/name-leads/${leadId}/email-consent`, { method: "POST", body: JSON.stringify(data) }),
+  getNameLeadFollowup: (leadId: string) =>
+    request<{ followup: Record<string, unknown> | null }>(`/admin/name-leads/${leadId}/email-followup`),
+  startNameLeadFollowup: (leadId: string) =>
+    request<{ status: string }>(`/admin/name-leads/${leadId}/email/start`, { method: "POST" }),
+  updateNameLeadFollowupStatus: (leadId: string, status: "paused" | "unsubscribed") =>
+    request<{ followup: Record<string, unknown> }>(`/admin/name-leads/${leadId}/email-followup/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
+
   createHunt: (data: HuntRequest) =>
     request<HuntResponse>("/hunts", {
       method: "POST",

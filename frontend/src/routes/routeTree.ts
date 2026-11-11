@@ -1,47 +1,10 @@
 import { createRootRoute, createRoute } from "@tanstack/react-router";
 import { RootLayout } from "./root";
-import { DashboardPage } from "./dashboard";
-import { NewHuntPage } from "./new-hunt";
-import { HuntDetailPage } from "./hunt-detail";
-import { AutomationJobPage } from "./automation-job";
-import { SettingsPage } from "./settings";
+import { NameLeadsPage } from "./name-leads";
+import { PublicNameRequestPage } from "./public-name-request";
 
 const rootRoute = createRootRoute({ component: RootLayout });
-
-const indexRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/",
-  component: DashboardPage,
-});
-
-const newHuntRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/hunts/new",
-  component: NewHuntPage,
-});
-
-const huntDetailRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/hunts/$huntId",
-  component: HuntDetailPage,
-});
-
-const automationJobRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/automation/$jobId",
-  component: AutomationJobPage,
-});
-
-const settingsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/settings",
-  component: SettingsPage,
-});
-
-export const routeTree = rootRoute.addChildren([
-  indexRoute,
-  newHuntRoute,
-  huntDetailRoute,
-  automationJobRoute,
-  settingsRoute,
-]);
+const leadsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: NameLeadsPage });
+const publicRequestRoute = createRoute({ getParentRoute: () => rootRoute, path: "/name-request", component: PublicNameRequestPage });
+const namedLeadsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/name-leads", component: NameLeadsPage });
+export const routeTree = rootRoute.addChildren([leadsRoute, namedLeadsRoute, publicRequestRoute]);
