@@ -570,7 +570,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 export const api = {
   searchNameLeads: (data: { country_code: string; max_results_per_query: number; max_candidates: number; include_reddit: boolean; include_other_forums: boolean; include_tiktok: boolean; include_instagram: boolean; include_facebook: boolean }) =>
-    request<{ provider: string; candidate_count: number; direct_requests: number; high_intent_count: number; leads: NameIntentLead[]; notice: string }>("/name-leads/search", {
+    request<{ run_id: string; status: string }>("/admin/name-leads/search", {
       method: "POST",
       body: JSON.stringify(data),
     }),
@@ -580,27 +580,27 @@ export const api = {
   verifyPublicNameRequest: (token: string) =>
     request<{ status: string; message: string }>(`/public/name-request/verify?token=${encodeURIComponent(token)}`),
   getNameLeadRevenue: () =>
-    request<{ platforms: Array<{source: string; submitted: number; verified: number; orders: number; revenue_by_currency: Record<string, number>; customers: number; conversion_rate: number}>; total_orders: number; total_verified_consents: number; note: string }>("/name-leads/revenue"),
+    request<{ platforms: Array<{source: string; submitted: number; verified: number; orders: number; revenue_by_currency: Record<string, number>; customers: number; conversion_rate: number}>; total_orders: number; total_verified_consents: number; note: string }>("/admin/name-leads/revenue"),
 
   getNameLeadDashboard: () =>
-    request<any>("/name-leads/dashboard"),
+    request<any>("/admin/name-leads/dashboard"),
   listNameLeads: (status = "", minScore = 0, platform = "", intentType = "") =>
-    request<{ leads: NameIntentLead[]; count: number }>(`/name-leads?min_score=${minScore}${status ? `&status=${encodeURIComponent(status)}` : ""}${platform ? `&platform=${encodeURIComponent(platform)}` : ""}${intentType ? `&intent_type=${encodeURIComponent(intentType)}` : ""}`),
+    request<{ leads: NameIntentLead[]; count: number }>(`/admin/name-leads?min_score=${minScore}${status ? `&status=${encodeURIComponent(status)}` : ""}${platform ? `&platform=${encodeURIComponent(platform)}` : ""}${intentType ? `&intent_type=${encodeURIComponent(intentType)}` : ""}`),
 
   updateNameLeadStatus: (leadId: string, status: string) =>
-    request<{ lead: NameIntentLead }>(`/name-leads/${leadId}/status`, {
+    request<{ lead: NameIntentLead }>(`/admin/name-leads/${leadId}/status`, {
       method: "PATCH",
       body: JSON.stringify({ status }),
     }),
 
   recordNameLeadConsent: (leadId: string, data: { email: string; consent_confirmed: boolean; consent_source: string; consent_evidence: string }) =>
-    request<{ followup: Record<string, unknown> }>(`/name-leads/${leadId}/email-consent`, { method: "POST", body: JSON.stringify(data) }),
+    request<{ followup: Record<string, unknown> }>(`/admin/name-leads/${leadId}/email-consent`, { method: "POST", body: JSON.stringify(data) }),
   getNameLeadFollowup: (leadId: string) =>
-    request<{ followup: Record<string, unknown> | null }>(`/name-leads/${leadId}/email-followup`),
+    request<{ followup: Record<string, unknown> | null }>(`/admin/name-leads/${leadId}/email-followup`),
   startNameLeadFollowup: (leadId: string) =>
-    request<{ followup: Record<string, unknown> }>(`/name-leads/${leadId}/email-followup/start`, { method: "POST" }),
+    request<{ followup: Record<string, unknown> }>(`/admin/name-leads/${leadId}/email/start`, { method: "POST" }),
   updateNameLeadFollowupStatus: (leadId: string, status: "paused" | "unsubscribed") =>
-    request<{ followup: Record<string, unknown> }>(`/name-leads/${leadId}/email-followup/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
+    request<{ followup: Record<string, unknown> }>(`/admin/name-leads/${leadId}/email-followup/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
 
   createHunt: (data: HuntRequest) =>
     request<HuntResponse>("/hunts", {
