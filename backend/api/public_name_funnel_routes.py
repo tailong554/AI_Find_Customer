@@ -13,8 +13,8 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from api.name_lead_email_routes import _init_tables as _init_email_tables
-from api.name_lead_routes import _now
-from config.settings import _resolve_file, get_settings
+from api.name_lead_routes import _database_path, _now
+from config.settings import get_settings
 from emailing.smtp_client import send_smtp_email
 
 router = APIRouter()
@@ -43,7 +43,7 @@ class PublicOrderEvent(BaseModel):
 
 
 def _db():
-    conn = sqlite3.connect(_resolve_file("name_leads.sqlite3"), timeout=20)
+    conn = sqlite3.connect(str(_database_path()), timeout=20)
     conn.row_factory = sqlite3.Row
     conn.execute("""CREATE TABLE IF NOT EXISTS public_name_consents (
         id TEXT PRIMARY KEY, email TEXT NOT NULL, email_hash TEXT NOT NULL,
