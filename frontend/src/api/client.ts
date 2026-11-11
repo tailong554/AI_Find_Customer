@@ -535,7 +535,7 @@ async function requestSettings<T>(path: string, options?: RequestInit): Promise<
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || res.statusText);
+    throw new Error(err.error || err.detail || res.statusText);
   }
   if (res.status === 204) {
     return undefined as T;
@@ -579,6 +579,8 @@ export const api = {
     request<{ status: string; message: string }>("/public/name-request", { method: "POST", body: JSON.stringify(data) }),
   verifyPublicNameRequest: (token: string) =>
     request<{ status: string; message: string }>(`/public/name-request/verify?token=${encodeURIComponent(token)}`),
+  getNameLeadSearchRun: (runId: string) =>
+    request<{ id: string; status: string; provider: string; queries_total: number; queries_completed: number; candidate_count: number; direct_requests: number; high_intent_count: number; error_summary?: string }>(`/admin/name-leads/search-runs/${encodeURIComponent(runId)}`),
   getNameLeadRevenue: () =>
     request<{ platforms: Array<{source: string; submitted: number; verified: number; orders: number; revenue_by_currency: Record<string, number>; customers: number; conversion_rate: number}>; total_orders: number; total_verified_consents: number; note: string }>("/admin/name-leads/revenue"),
 
@@ -598,7 +600,7 @@ export const api = {
   getNameLeadFollowup: (leadId: string) =>
     request<{ followup: Record<string, unknown> | null }>(`/admin/name-leads/${leadId}/email-followup`),
   startNameLeadFollowup: (leadId: string) =>
-    request<{ followup: Record<string, unknown> }>(`/admin/name-leads/${leadId}/email/start`, { method: "POST" }),
+    request<{ status: string }>(`/admin/name-leads/${leadId}/email/start`, { method: "POST" }),
   updateNameLeadFollowupStatus: (leadId: string, status: "paused" | "unsubscribed") =>
     request<{ followup: Record<string, unknown> }>(`/admin/name-leads/${leadId}/email-followup/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
 
